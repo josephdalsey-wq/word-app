@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="A daily word ladder game: change one letter at a time and get to POOP in as few moves as possible.">
+<meta name="theme-color" content="#191919">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>PLOP — a daily word ladder</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💩</text></svg>">
+</head>
+<body>
+
+<a class="skip-link" href="#board">Skip to the game board</a>
+
+<div class="app">
+
+  <header class="header">
+    <h1 class="title" id="game-title">PLOP</h1>
+    <p class="tagline">a daily word ladder</p>
+    <p class="meta">
+      <span class="meta__item" id="puzzle-number">#—</span>
+      <span class="meta__sep" aria-hidden="true">·</span>
+      <span class="meta__item">Start <strong id="start-word">————</strong></span>
+      <span class="meta__sep" aria-hidden="true">·</span>
+      <span class="meta__item">Goal <strong class="meta__goal" id="target-word">POOP</strong></span>
+    </p>
+  </header>
+
+  <main class="main">
+    <!-- Toast messages (invalid guesses, etc.) -->
+    <div class="toast" id="toast" role="alert"></div>
+
+    <div class="board" id="board" tabindex="-1" aria-label="Word ladder"></div>
+
+    <!-- Screen-reader running commentary for board changes -->
+    <p class="sr-only" id="board-status" role="status" aria-live="polite"></p>
+
+    <p class="board-hint" id="board-hint">Change exactly one letter per move.</p>
+  </main>
+
+  <section class="keyboard" id="keyboard" aria-label="On-screen keyboard"></section>
+
+  <footer class="footer">
+    <button type="button" class="footer__btn" id="btn-yesterday">Yesterday</button>
+    <button type="button" class="footer__btn" id="btn-stats">Stats</button>
+    <button type="button" class="footer__btn" id="btn-help">How to play</button>
+  </footer>
+
+</div>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Modals                                                              -->
+<!-- ------------------------------------------------------------------ -->
+<div class="overlay" id="overlay" hidden>
+
+  <!-- How to play -->
+  <div class="modal" id="modal-help" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
+    <button type="button" class="modal__close" data-close aria-label="Close how to play">&times;</button>
+    <h2 class="modal__title" id="help-title">How to Play</h2>
+
+    <p class="modal__lead">Get to <strong class="accent-text">POOP</strong> in as few steps as possible.</p>
+    <p>Each word must be exactly <strong>one letter</strong> different from the last, and must be a real
+      four-letter word.</p>
+
+    <p class="modal__label">Example</p>
+    <div class="example">
+      <div class="row row--static" aria-label="B A R N">
+        <div class="tile">B</div><div class="tile">A</div><div class="tile">R</div><div class="tile">N</div>
+      </div>
+      <div class="row row--static" aria-label="B O R N, the second letter changed from A to O">
+        <div class="tile">B</div><div class="tile tile--changed">O</div><div class="tile">R</div><div class="tile">N</div>
+      </div>
+    </div>
+    <p class="modal__caption">Only the second letter changed: <strong>A</strong> &rarr;
+      <strong class="accent-text">O</strong>.</p>
+
+    <p>A new starting word is chosen daily. Can you find the shortest path?</p>
+
+    <div class="modal__actions">
+      <button type="button" class="btn btn--primary" data-close>Got it</button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="modal" id="modal-results" role="dialog" aria-modal="true" aria-labelledby="results-title" hidden>
+    <button type="button" class="modal__close" data-close aria-label="Close results">&times;</button>
+    <h2 class="modal__title" id="results-title">You got to POOP!</h2>
+    <p class="modal__lead" id="results-subtitle"></p>
+
+    <div class="score" id="results-score"></div>
+
+    <p class="modal__label">Your ladder</p>
+    <div class="ladder" id="results-ladder"></div>
+
+    <label class="checkbox">
+      <input type="checkbox" id="share-include-ladder">
+      <span>Include the words in my share text (spoilers!)</span>
+    </label>
+
+    <div class="modal__actions">
+      <button type="button" class="btn btn--primary" id="btn-share">Share result</button>
+      <button type="button" class="btn" id="btn-replay">Play again (practice)</button>
+    </div>
+    <p class="modal__note">Practice replays never change your stats.</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="modal" id="modal-stats" role="dialog" aria-modal="true" aria-labelledby="stats-title" hidden>
+    <button type="button" class="modal__close" data-close aria-label="Close statistics">&times;</button>
+    <h2 class="modal__title" id="stats-title">Statistics</h2>
+    <div class="stats-grid" id="stats-grid"></div>
+    <p class="modal__label">Moves per completed puzzle</p>
+    <div class="dist" id="stats-dist"></div>
+    <div class="modal__actions">
+      <button type="button" class="btn" data-close>Close</button>
+    </div>
+  </div>
+
+  <!-- Yesterday -->
+  <div class="modal" id="modal-yesterday" role="dialog" aria-modal="true" aria-labelledby="yesterday-title" hidden>
+    <button type="button" class="modal__close" data-close aria-label="Close yesterday's answer">&times;</button>
+    <h2 class="modal__title" id="yesterday-title">Yesterday's puzzle</h2>
+    <div id="yesterday-body"></div>
+    <div class="modal__actions">
+      <button type="button" class="btn" data-close>Close</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="words.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
