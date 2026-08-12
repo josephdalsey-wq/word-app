@@ -1,8 +1,8 @@
 /* =============================================================================
- * PLOP — a daily word ladder
+ * FISH LADDER — a daily word ladder
  *
  * Change one letter at a time, every step a real four-letter word, and get to
- * POOP in as few moves as possible.
+ * FISH in as few moves as possible.
  *
  * Everything below is plain ES2017 — no build step, no framework. Load order is
  * words.js (data) then this file.
@@ -25,8 +25,8 @@
  * -------------------------------------------------------------------------- */
 
 const CONFIG = {
-  gameName: "PLOP",            // shown in the header and in share text
-  targetWord: "POOP",          // the word every ladder must reach
+  gameName: "FISH LADDER",     // shown in the header and in share text
+  targetWord: "FISH",          // the word every ladder must reach
   epoch: "2025-08-15",         // puzzle #1 was played on this calendar date
   debug: false,                // true → log the optimal path, show the debug bar
   forcePuzzleNumber: null,     // e.g. 362 to pin a specific puzzle
@@ -35,9 +35,9 @@ const CONFIG = {
 };
 
 const STORAGE_KEYS = {
-  progress: "plop.progress.v1",
-  stats: "plop.stats.v1",
-  tutorial: "plop.tutorial.v1"
+  progress: "fishladder.progress.v1",
+  stats: "fishladder.stats.v1",
+  tutorial: "fishladder.tutorial.v1"
 };
 
 const MESSAGES = {
@@ -204,8 +204,8 @@ function parseLocalDate(iso) {
 function storage() {
   try {
     if (typeof localStorage === "undefined") return null;
-    localStorage.setItem("__plop_probe", "1");
-    localStorage.removeItem("__plop_probe");
+    localStorage.setItem("__ladder_probe", "1");
+    localStorage.removeItem("__ladder_probe");
     return localStorage;
   } catch (err) {
     return null;   // private mode / storage disabled — the game still runs
@@ -543,7 +543,7 @@ function renderHeader() {
   el["start-word"].textContent = game.puzzle.startWord;
   el["target-word"].textContent = CONFIG.targetWord;
   el["game-title"].textContent = CONFIG.gameName;
-  document.title = CONFIG.gameName + " — a daily word ladder";
+  document.title = CONFIG.gameName;
 }
 
 function renderHint() {
@@ -739,7 +739,8 @@ function buildEmojiGrid(ladder) {
   var lines = ["⬛⬛⬛⬛"];               // the starting word
   for (var i = 1; i < ladder.length; i++) {
     var idx = changedIndex(ladder[i - 1], ladder[i]);
-    var mark = ladder[i] === CONFIG.targetWord ? "💩" : "🟫";
+    // 🟫 matches the brown accent the changed tile actually uses on the board.
+    var mark = ladder[i] === CONFIG.targetWord ? "🐟" : "🟫";
     var row = "";
     for (var j = 0; j < 4; j++) row += (j === idx ? mark : "⬛");
     lines.push(row);
@@ -752,7 +753,7 @@ function buildShareText(includeLadder) {
   var moves = movesMade(state);
   var optimal = ensureOptimal();
   var header = CONFIG.gameName + " #" + state.puzzleNumber;
-  var summary = moves + " " + plural(moves, "move") + " 💩";
+  var summary = moves + " " + plural(moves, "move") + " 🐟";
   if (typeof optimal === "number") {
     summary += moves === optimal ? " · perfect path!" : " · optimal " + optimal;
   }
@@ -979,7 +980,7 @@ function renderDebugBar() {
   console.log("[" + CONFIG.gameName + "] optimal path:", game.optimalPath.join(" → "));
 }
 
-/** Console API: window.PLOP */
+/** Console API: window.LADDER (named for the game, not the target word). */
 function debugApi() {
   return {
     config: CONFIG,
@@ -1081,7 +1082,7 @@ function init() {
     setTimeout(showResults, 250);
   }
 
-  if (typeof window !== "undefined") window.PLOP = debugApi();
+  if (typeof window !== "undefined") window.LADDER = debugApi();
 }
 
 if (typeof document !== "undefined") {

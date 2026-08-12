@@ -41,16 +41,18 @@ check("dictionary loaded", G.DICTIONARY.size > 1500, "size " + G.DICTIONARY.size
 check("every entry is 4 letters A–Z",
   WORD_LIST.every((w) => /^[a-z]{4}$/.test(w)));
 check("no duplicate entries", new Set(WORD_LIST).size === WORD_LIST.length);
-check("POOP is in the dictionary", G.isValidWord("POOP"));
+check("FISH is in the dictionary", G.isValidWord("FISH"));
 check("SWIM/SLIM/SLIP are in the dictionary",
   G.isValidWord("SWIM") && G.isValidWord("SLIM") && G.isValidWord("SLIP"));
+check("the target's three neighbours are present",
+  G.isValidWord("DISH") && G.isValidWord("WISH") && G.isValidWord("FIST"));
 check("lookup is case-insensitive", G.isValidWord("swim") && G.isValidWord("Swim"));
 
 /* -------------------------------------------------------------------------- */
 section("Spec case 1–5: guess validation");
 
 // The rules functions operate on the shared game state, so set one up by hand.
-G.game.puzzle = { number: 1, startWord: "SWIM", target: "POOP" };
+G.game.puzzle = { number: 1, startWord: "SWIM", target: "FISH" };
 G.game.state = { puzzleNumber: 1, startWord: "SWIM", ladder: ["SWIM"], completed: false, scored: false, current: "" };
 G.game.optimal = null;
 G.game.optimalPath = null;
@@ -105,22 +107,22 @@ function freshState(startWord) {
 
 (() => {
   // A jump of two letters must not win, even when it lands on the target.
-  freshState("POLL");                     // POLL → POOP changes letters 3 and 4
-  const jump = G.submitGuess("POOP");
-  check("a two-letter jump onto POOP is rejected",
+  freshState("DASH");                     // DASH → FISH changes letters 1 and 2
+  const jump = G.submitGuess("FISH");
+  check("a two-letter jump onto FISH is rejected",
     !jump.ok && jump.reason === G.MESSAGES.transition && !G.game.state.completed);
 
-  // A full legal ladder: SWIM → SLIM → SLIP → SLOP → PLOP → POOP
-  freshState("SWIM");
-  const ladder = ["SLIM", "SLIP", "SLOP", "PLOP", "POOP"];
+  // A full legal ladder: CATS → BATS → BITS → WITS → WITH → WISH → FISH
+  freshState("CATS");
+  const ladder = ["BATS", "BITS", "WITS", "WITH", "WISH", "FISH"];
   const results = ladder.map((word) => G.submitGuess(word));
-  check("6. a valid ladder ending in POOP triggers the win state",
+  check("6. a valid ladder ending in FISH triggers the win state",
     results.every((r) => r.ok) &&
     results[results.length - 1].won === true &&
     G.game.state.completed === true,
     JSON.stringify(results.map((r) => r.ok || r.reason)));
-  check("the finished ladder is 5 moves long", G.game.state.ladder.length - 1 === 5);
-  check("no further guesses accepted after winning", !G.submitGuess("PROP").ok);
+  check("the finished ladder is 6 moves long", G.game.state.ladder.length - 1 === 6);
+  check("no further guesses accepted after winning", !G.submitGuess("DISH").ok);
 })();
 
 /* -------------------------------------------------------------------------- */
@@ -158,20 +160,20 @@ function pathIsLegal(path) {
   return true;
 }
 
-const sample = G.calculateShortestPath("SWIM", "POOP");
-check("BFS finds a SWIM → POOP ladder", Array.isArray(sample) && sample.length > 1,
+const sample = G.calculateShortestPath("SWIM", "FISH");
+check("BFS finds a SWIM → FISH ladder", Array.isArray(sample) && sample.length > 1,
   sample && sample.join(" → "));
 check("every step in the ladder differs by exactly one letter", pathIsLegal(sample));
 check("the ladder starts and ends correctly",
-  sample[0] === "SWIM" && sample[sample.length - 1] === "POOP");
+  sample[0] === "SWIM" && sample[sample.length - 1] === "FISH");
 check("unreachable/unknown words return null",
-  G.calculateShortestPath("ZZZZ", "POOP") === null);
+  G.calculateShortestPath("ZZZZ", "FISH") === null);
 check("start === target is a zero-move path",
-  G.calculateShortestPath("POOP", "POOP").length === 1);
+  G.calculateShortestPath("FISH", "FISH").length === 1);
 
-// The headline guarantee: every curated start word can actually reach POOP.
-const solvable = START_WORDS.map((w) => G.calculateShortestPath(w.toUpperCase(), "POOP"));
-check("all " + START_WORDS.length + " start words reach POOP",
+// The headline guarantee: every curated start word can actually reach FISH.
+const solvable = START_WORDS.map((w) => G.calculateShortestPath(w.toUpperCase(), "FISH"));
+check("all " + START_WORDS.length + " start words reach FISH",
   solvable.every((p) => p !== null),
   START_WORDS.filter((_, i) => !solvable[i]).join(", "));
 check("all start-word ladders are legal step by step",
@@ -188,7 +190,7 @@ console.log("       optimal moves across start words: min " + Math.min(...length
 /* -------------------------------------------------------------------------- */
 section("Spec cases 7–8: save and restore");
 
-const puzzle = { number: 500, startWord: "SWIM", target: "POOP" };
+const puzzle = { number: 500, startWord: "SWIM", target: "FISH" };
 
 (() => {
   memory.clear();
@@ -202,7 +204,7 @@ const puzzle = { number: 500, startWord: "SWIM", target: "POOP" };
   check("7b. an unfinished ladder is restored exactly",
     restored.ladder.join(",") === "SWIM,SLIM,SLIP" && restored.completed === false);
 
-  restored.ladder.push("PLOP", "POOP");
+  restored.ladder.push("SHIM", "WHIM");
   restored.completed = true;
   restored.scored = true;
   G.saveState(restored);
@@ -210,14 +212,14 @@ const puzzle = { number: 500, startWord: "SWIM", target: "POOP" };
   check("8. a completed puzzle is restored as completed",
     done.completed === true && done.scored === true && done.ladder.length === 5);
 
-  const tomorrow = G.loadState({ number: 501, startWord: "BARN", target: "POOP" });
+  const tomorrow = G.loadState({ number: 501, startWord: "BARN", target: "FISH" });
   check("a new day resets to a fresh ladder",
     tomorrow.ladder.join(",") === "BARN" && !tomorrow.completed);
 
   // A start word that no longer matches the saved one (e.g. edited word list)
   // must also fall back to a fresh ladder rather than resuming nonsense.
   G.saveState({ puzzleNumber: 502, startWord: "BARN", ladder: ["BARN", "BORN"], completed: false, scored: false });
-  const mismatched = G.loadState({ number: 502, startWord: "SWIM", target: "POOP" });
+  const mismatched = G.loadState({ number: 502, startWord: "SWIM", target: "FISH" });
   check("a changed start word invalidates saved progress",
     mismatched.ladder.join(",") === "SWIM");
 })();

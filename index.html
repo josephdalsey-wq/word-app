@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="A daily word ladder game: change one letter at a time and get to POOP in as few moves as possible.">
+<meta name="description" content="A daily word ladder game: change one letter at a time and get to FISH in as few moves as possible.">
 <meta name="theme-color" content="#191919">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>PLOP — a daily word ladder</title>
+<title>Fish Ladder</title>
 <link rel="stylesheet" href="styles.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💩</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐟</text></svg>">
 </head>
 <body>
 
@@ -18,14 +18,14 @@
 <div class="app">
 
   <header class="header">
-    <h1 class="title" id="game-title">PLOP</h1>
+    <h1 class="title" id="game-title">FISH LADDER</h1>
     <p class="tagline">a daily word ladder</p>
     <p class="meta">
       <span class="meta__item" id="puzzle-number">#—</span>
       <span class="meta__sep" aria-hidden="true">·</span>
       <span class="meta__item">Start <strong id="start-word">————</strong></span>
       <span class="meta__sep" aria-hidden="true">·</span>
-      <span class="meta__item">Goal <strong class="meta__goal" id="target-word">POOP</strong></span>
+      <span class="meta__item">Goal <strong class="meta__goal" id="target-word">FISH</strong></span>
     </p>
   </header>
 
@@ -61,7 +61,7 @@
     <button type="button" class="modal__close" data-close aria-label="Close how to play">&times;</button>
     <h2 class="modal__title" id="help-title">How to Play</h2>
 
-    <p class="modal__lead">Get to <strong class="accent-text">POOP</strong> in as few steps as possible.</p>
+    <p class="modal__lead">Get to <strong class="accent-text">FISH</strong> in as few steps as possible.</p>
     <p>Each word must be exactly <strong>one letter</strong> different from the last, and must be a real
       four-letter word.</p>
 
@@ -87,7 +87,7 @@
   <!-- Results -->
   <div class="modal" id="modal-results" role="dialog" aria-modal="true" aria-labelledby="results-title" hidden>
     <button type="button" class="modal__close" data-close aria-label="Close results">&times;</button>
-    <h2 class="modal__title" id="results-title">You got to POOP!</h2>
+    <h2 class="modal__title" id="results-title">You got to FISH!</h2>
     <p class="modal__lead" id="results-subtitle"></p>
 
     <div class="score" id="results-score"></div>

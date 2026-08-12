@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="A daily word ladder game: change one letter at a time and get to POOP in as few moves as possible.">
+<meta name="description" content="A daily word ladder game: change one letter at a time and get to FISH in as few moves as possible.">
 <meta name="theme-color" content="#191919">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>PLOP — a daily word ladder</title>
+<title>Fish Ladder</title>
 <style>
 /* ==========================================================================
-   PLOP — a daily word ladder
+   FISH LADDER — a daily word ladder
    Dark, mobile-first. All colours live in the :root block below, so a full
    re-skin is a handful of edits.
    ========================================================================== */
@@ -215,7 +215,7 @@ button { font: inherit; color: inherit; }
 /* The starting word sits a little quieter than the player's own moves */
 .row--start .tile { border-color: var(--border-soft); color: var(--text-dim); }
 
-/* The winning POOP row */
+/* The winning target row */
 .row--target .tile {
   border-color: var(--accent);
   background: var(--accent);
@@ -580,7 +580,7 @@ button { font: inherit; color: inherit; }
 }
 
 </style>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💩</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐟</text></svg>">
 </head>
 <body>
 
@@ -589,14 +589,14 @@ button { font: inherit; color: inherit; }
 <div class="app">
 
   <header class="header">
-    <h1 class="title" id="game-title">PLOP</h1>
+    <h1 class="title" id="game-title">FISH LADDER</h1>
     <p class="tagline">a daily word ladder</p>
     <p class="meta">
       <span class="meta__item" id="puzzle-number">#—</span>
       <span class="meta__sep" aria-hidden="true">·</span>
       <span class="meta__item">Start <strong id="start-word">————</strong></span>
       <span class="meta__sep" aria-hidden="true">·</span>
-      <span class="meta__item">Goal <strong class="meta__goal" id="target-word">POOP</strong></span>
+      <span class="meta__item">Goal <strong class="meta__goal" id="target-word">FISH</strong></span>
     </p>
   </header>
 
@@ -632,7 +632,7 @@ button { font: inherit; color: inherit; }
     <button type="button" class="modal__close" data-close aria-label="Close how to play">&times;</button>
     <h2 class="modal__title" id="help-title">How to Play</h2>
 
-    <p class="modal__lead">Get to <strong class="accent-text">POOP</strong> in as few steps as possible.</p>
+    <p class="modal__lead">Get to <strong class="accent-text">FISH</strong> in as few steps as possible.</p>
     <p>Each word must be exactly <strong>one letter</strong> different from the last, and must be a real
       four-letter word.</p>
 
@@ -658,7 +658,7 @@ button { font: inherit; color: inherit; }
   <!-- Results -->
   <div class="modal" id="modal-results" role="dialog" aria-modal="true" aria-labelledby="results-title" hidden>
     <button type="button" class="modal__close" data-close aria-label="Close results">&times;</button>
-    <h2 class="modal__title" id="results-title">You got to POOP!</h2>
+    <h2 class="modal__title" id="results-title">You got to FISH!</h2>
     <p class="modal__lead" id="results-subtitle"></p>
 
     <div class="score" id="results-score"></div>
@@ -712,8 +712,8 @@ button { font: inherit; color: inherit; }
  * list, filtered for profanity, slurs, proper nouns and non-English entries.
  *
  * START_WORDS: 400 curated daily starting words. Every one of them is
- * guaranteed (by breadth-first search over WORD_LIST) to have a path to POOP,
- * and to be at least 3 moves away so the puzzle is never trivial.
+ * guaranteed (by breadth-first search over WORD_LIST) to have a path to
+ * FISH, and to be at least 3 moves away so the puzzle is never trivial.
  *
  * Both lists are lowercase; the UI uppercases for display.
  */
@@ -836,27 +836,27 @@ const WORD_LIST_CHUNKS = [
 ];
 
 const START_WORD_CHUNKS = [
-  "arms army aunt away babe baby back bags bail ball band bang bank bars bath bear beat beef beep",
-  "beer bell belt best bike bill bird bite blew blow blue boat body bond bone book boom born boss",
-  "bowl boys buck bull burn busy cage cake call calm came camp card care cars cash cast cats cave",
-  "cell chat chef chip city clay club clue coat code cold cops copy cost crew cure cute dare dark",
-  "data date dawn days deal dear deck deep deny desk dish dogs doll done down drag draw drew duck",
-  "dude dump dust duty earn ears ease east easy eyes face fail fair fake fall fans farm fast fate",
-  "feed feel feet fell felt file fill film find fire firm fish five flag flat flow food foot four",
-  "free fuel full gain game gate gave gear gift girl give glad goal gods gold golf gone grab gray",
-  "grew grow guys hail hair hall hand hang hard head hear heat held help hero hide hill hire hold",
-  "hole holy home hope horn host hour huge hung hunt jobs join joke jump jury keep kept keys kick",
-  "kids king kiss knew lack lady laid lake land last late lead left legs lend life lift line link",
-  "lion lips list live load loan lock long lose lost lots loud love luck made maid mail make male",
-  "mask mass mate meal meat meet mile milk mind mine miss mood moon move nail name near neck need",
-  "news next nine nose note nuts odds pack page paid pair park part pass path pick pink pipe pity",
-  "plan play port post pray pull pure push quit race rain rare rate read rent rest rice rich ride",
-  "ring rise risk road rock roll roof room rope rule rush safe sake sale salt sand save seal seat",
-  "seek seen sell send sent sets ship shoe shop show shut side sing sink site size skin skip slip",
-  "slow snow soft sold song sons soon soul soup spit spot star stay step stop suit swim tail talk",
-  "tall tank tape task team tear tell test text thin tied time tiny told tone took tour town trap",
-  "tree trip tune turn vice vote wait wake walk wall warm warn wash wave wear week went west wide",
-  "wife wild wind wine wing wipe wire wise wish woke wolf wood word wore work wrap yard year zero",
+  "arms army aunt babe baby back bags bail ball band bang bank bars bath bear beat beef beep beer",
+  "bell belt best bike bill bird bite blew blow boat body bond bone book boom born boss bowl boys",
+  "buck bull burn busy cage cake call calm came camp card care cars cash cast cats cave cell chat",
+  "chip city coat code cold cook cool cops copy cost cure cute dare dark data date dawn days deal",
+  "dear deck deep deny desk dogs doll done door down drag draw drop duck dude dump dust duty earn",
+  "ears ease east easy eyes face fail fair fake fall fans farm fate feed feel feet fell felt file",
+  "fill film find fire firm five flag flat flew flow food fool foot four free fuel full gain game",
+  "gate gave gear gift girl give glad goal gods gold golf gone good grab gray grow guys hail hair",
+  "hall hand hang hard head hear heat held help hero hide hill hire hold hole holy home hood hook",
+  "hope horn host hour huge hung hunt jobs join joke jump jury keep kept keys kick kids king kiss",
+  "lack lady laid lake land last late lead left legs lend life lift line link lion lips live load",
+  "loan lock long look lose lost lots loud love luck made maid mail make male mask mass mate math",
+  "meal meat meet mile milk mind mine miss mood moon move nail name near neck need news next nine",
+  "noon nose note nuts odds over owns pack page paid pair park part pass path pays pick pigs pink",
+  "pipe pity play pool poor port post pour pray pull pure push race rain rare rate read rent rest",
+  "rice rich ride ring rise risk road rock roll roof room rope rule rush safe sake sale salt sand",
+  "save seal seat seek seen sell send sent sets shed ship shoe shop show shut side sing sink site",
+  "size skip slip slow snow soft sold song sons soon soul soup spin spit spot star stay step stop",
+  "suit swim tail talk tall tank tape task taxi team tear tell test text thin tied time tiny told",
+  "tone took tour town trap trip tune turn vice vote wait wake walk wall warm warn wave wear week",
+  "went west wide wife wild wind wine wing wipe wire woke wolf wood word wore work yard year zero",
   "zone",
 ];
 
@@ -870,10 +870,10 @@ if (typeof module !== "undefined" && module.exports) {
 }
 
 /* =============================================================================
- * PLOP — a daily word ladder
+ * FISH LADDER — a daily word ladder
  *
  * Change one letter at a time, every step a real four-letter word, and get to
- * POOP in as few moves as possible.
+ * FISH in as few moves as possible.
  *
  * Everything below is plain ES2017 — no build step, no framework. Load order is
  * words.js (data) then this file.
@@ -896,8 +896,8 @@ if (typeof module !== "undefined" && module.exports) {
  * -------------------------------------------------------------------------- */
 
 const CONFIG = {
-  gameName: "PLOP",            // shown in the header and in share text
-  targetWord: "POOP",          // the word every ladder must reach
+  gameName: "FISH LADDER",     // shown in the header and in share text
+  targetWord: "FISH",          // the word every ladder must reach
   epoch: "2025-08-15",         // puzzle #1 was played on this calendar date
   debug: false,                // true → log the optimal path, show the debug bar
   forcePuzzleNumber: null,     // e.g. 362 to pin a specific puzzle
@@ -906,9 +906,9 @@ const CONFIG = {
 };
 
 const STORAGE_KEYS = {
-  progress: "plop.progress.v1",
-  stats: "plop.stats.v1",
-  tutorial: "plop.tutorial.v1"
+  progress: "fishladder.progress.v1",
+  stats: "fishladder.stats.v1",
+  tutorial: "fishladder.tutorial.v1"
 };
 
 const MESSAGES = {
@@ -1075,8 +1075,8 @@ function parseLocalDate(iso) {
 function storage() {
   try {
     if (typeof localStorage === "undefined") return null;
-    localStorage.setItem("__plop_probe", "1");
-    localStorage.removeItem("__plop_probe");
+    localStorage.setItem("__ladder_probe", "1");
+    localStorage.removeItem("__ladder_probe");
     return localStorage;
   } catch (err) {
     return null;   // private mode / storage disabled — the game still runs
@@ -1414,7 +1414,7 @@ function renderHeader() {
   el["start-word"].textContent = game.puzzle.startWord;
   el["target-word"].textContent = CONFIG.targetWord;
   el["game-title"].textContent = CONFIG.gameName;
-  document.title = CONFIG.gameName + " — a daily word ladder";
+  document.title = CONFIG.gameName;
 }
 
 function renderHint() {
@@ -1610,7 +1610,8 @@ function buildEmojiGrid(ladder) {
   var lines = ["⬛⬛⬛⬛"];               // the starting word
   for (var i = 1; i < ladder.length; i++) {
     var idx = changedIndex(ladder[i - 1], ladder[i]);
-    var mark = ladder[i] === CONFIG.targetWord ? "💩" : "🟫";
+    // 🟫 matches the brown accent the changed tile actually uses on the board.
+    var mark = ladder[i] === CONFIG.targetWord ? "🐟" : "🟫";
     var row = "";
     for (var j = 0; j < 4; j++) row += (j === idx ? mark : "⬛");
     lines.push(row);
@@ -1623,7 +1624,7 @@ function buildShareText(includeLadder) {
   var moves = movesMade(state);
   var optimal = ensureOptimal();
   var header = CONFIG.gameName + " #" + state.puzzleNumber;
-  var summary = moves + " " + plural(moves, "move") + " 💩";
+  var summary = moves + " " + plural(moves, "move") + " 🐟";
   if (typeof optimal === "number") {
     summary += moves === optimal ? " · perfect path!" : " · optimal " + optimal;
   }
@@ -1850,7 +1851,7 @@ function renderDebugBar() {
   console.log("[" + CONFIG.gameName + "] optimal path:", game.optimalPath.join(" → "));
 }
 
-/** Console API: window.PLOP */
+/** Console API: window.LADDER (named for the game, not the target word). */
 function debugApi() {
   return {
     config: CONFIG,
@@ -1952,7 +1953,7 @@ function init() {
     setTimeout(showResults, 250);
   }
 
-  if (typeof window !== "undefined") window.PLOP = debugApi();
+  if (typeof window !== "undefined") window.LADDER = debugApi();
 }
 
 if (typeof document !== "undefined") {

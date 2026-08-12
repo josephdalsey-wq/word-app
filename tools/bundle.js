@@ -3,7 +3,7 @@
  * produce a single self-contained file you can email, AirDrop or drop on any
  * static host.
  *
- *   node tools/bundle.js                 → plop.html (a complete page)
+ *   node tools/bundle.js                 → fish-ladder.html (a complete page)
  *   node tools/bundle.js --fragment out  → out (no <html>/<head>/<body>, for
  *                                          hosts that supply their own shell)
  *
@@ -19,7 +19,7 @@ const read = (f) => fs.readFileSync(path.join(ROOT, f), "utf8");
 const args = process.argv.slice(2);
 const fragmentIndex = args.indexOf("--fragment");
 const isFragment = fragmentIndex !== -1;
-const outFile = isFragment ? args[fragmentIndex + 1] : "plop.html";
+const outFile = isFragment ? args[fragmentIndex + 1] : "fish-ladder.html";
 
 if (isFragment && !outFile) {
   console.error("--fragment needs an output path");
@@ -51,9 +51,20 @@ if (isFragment) {
   html = html
     .replace(/^[\s\S]*?<title>/, "<title>")
     .replace(/<\/title>\s*/, "</title>\n")
-    .replace(/<link rel="icon"[^>]*>\s*/, "")
+    // Drop the whole favicon line. Matching the tag with [^>]* does NOT work:
+    // the href is an SVG data URI containing its own ">" characters, so the
+    // match ends early and leaves the tag's tail behind as visible text.
+    .replace(/^.*rel="icon".*\r?\n/m, "")
     .replace(/<\/head>\s*<body>\s*/, "")
     .replace(/\s*<\/body>\s*<\/html>\s*$/, "\n");
+
+  // The shell must be fully gone: anything left over renders as stray text.
+  const leftovers = ["<link", "<meta", "</head>", "<body>", "</html>", "</svg>"]
+    .filter((tag) => html.includes(tag));
+  if (leftovers.length) {
+    console.error("fragment still contains document-shell markup: " + leftovers.join(", "));
+    process.exit(1);
+  }
 }
 
 fs.writeFileSync(path.isAbsolute(outFile) ? outFile : path.join(ROOT, outFile), html);

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   PLOP — a daily word ladder
+   FISH LADDER — a daily word ladder
    Dark, mobile-first. All colours live in the :root block below, so a full
    re-skin is a handful of edits.
    ========================================================================== */
@@ -204,7 +204,7 @@ button { font: inherit; color: inherit; }
 /* The starting word sits a little quieter than the player's own moves */
 .row--start .tile { border-color: var(--border-soft); color: var(--text-dim); }
 
-/* The winning POOP row */
+/* The winning target row */
 .row--target .tile {
   border-color: var(--accent);
   background: var(--accent);

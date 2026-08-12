@@ -1,19 +1,19 @@
-# PLOP — a daily word ladder
+# FISH LADDER — a daily word ladder
 
 Change one letter at a time, every step a real four-letter word, and get to
-**POOP** in as few moves as possible. A new starting word every calendar day,
+**FISH** in as few moves as possible. A new starting word every calendar day,
 the same one for everybody.
 
 Vanilla HTML, CSS and JavaScript. No framework, no build step, no network calls
 at runtime.
 
 ```
-SWIM → SLIM → SLIP → SLOP → PLOP → POOP
+CATS → BATS → BITS → WITS → WITH → WISH → FISH
 ```
 
 ## Running it
 
-**The one-file way.** `plop.html` is the whole game inlined into a single file
+**The one-file way.** `fish-ladder.html` is the whole game inlined into a single file
 — no folder, no server. Download it, double-tap it, play. It is what you want
 if you just came here to play, or want the game on your phone.
 
@@ -43,7 +43,7 @@ node test.js
 
 53 checks covering guess validation, the win state, deterministic daily
 puzzles, BFS optimality, save/restore and the statistics rollup — including a
-proof that **all 400 starting words can reach POOP**.
+proof that **all 400 starting words can reach FISH**.
 
 ## Architecture
 
@@ -55,7 +55,7 @@ proof that **all 400 starting words can reach POOP**.
 | `words.js` | Generated data: the dictionary and the starting-word list. |
 | `test.js` | Headless Node test suite. |
 | `tools/build-words.py` | Regenerates `words.js` from public word lists. |
-| `tools/bundle.js` | Inlines everything into the single-file `plop.html`. |
+| `tools/bundle.js` | Inlines everything into the single-file `fish-ladder.html`. |
 
 `script.js` is organised top to bottom as:
 
@@ -82,8 +82,10 @@ proof that **all 400 starting words can reach POOP**.
    share text.
 10. **Debug API and bootstrap**.
 
-State lives in three localStorage keys: `plop.progress.v1` (today's ladder),
-`plop.stats.v1`, `plop.tutorial.v1`. Progress is keyed by puzzle number, so a
+State lives in three localStorage keys: `fishladder.progress.v1` (today's
+ladder), `fishladder.stats.v1`, `fishladder.tutorial.v1`. The keys are
+namespaced to the game, so re-theming to a new target word starts clean rather
+than restoring a ladder aimed somewhere else. Progress is keyed by puzzle number, so a
 new calendar day starts a fresh ladder automatically and an old save is
 discarded rather than resumed.
 
@@ -91,16 +93,21 @@ discarded rather than resumed.
 
 - **Dictionary** — `words.js`, `WORD_LIST`: **2,149** four-letter words, stored
   as space-separated chunks and expanded into a `Set` at load. 2,008 of them
-  are reachable from POOP.
+  are reachable from FISH.
 - **Starting words** — `words.js`, `START_WORDS`: **400** curated words, so the
   rotation runs 400 days before repeating.
 - **Regenerating both** — `tools/build-words.py` (download instructions are in
-  its docstring). It builds the graph, runs BFS from POOP and only emits start
-  words with a verified path.
+  its docstring). It builds the graph, runs BFS from the target and only emits
+  start words with a verified path. The target is `argv[1]`, defaulting to
+  `fish`: `python3 tools/build-words.py fish`.
 
 Every starting word is guaranteed solvable: `test.js` re-runs BFS from all 400
 of them on every test run. Optimal distances range from 3 to 8 moves, averaging
-4.95.
+5.64.
+
+FISH is a narrow target: only DISH, WISH and FIST are one letter away, so every
+ladder has to funnel through one of those three. That makes it a slightly longer
+puzzle than a target with more entrances would be.
 
 ### Limitations of the bundled dictionary
 
@@ -129,7 +136,7 @@ Everything below is a one- or two-line edit.
 | Want to change | Where |
 | --- | --- |
 | **Game name** | `CONFIG.gameName` in `script.js` (header, share text and `<title>` all follow it). |
-| **Target word** | `CONFIG.targetWord`. Must be four letters and in `WORD_LIST`. Rerun `tools/build-words.py` afterwards so the start words are re-verified against the new target, and update the copy in the how-to-play modal. |
+| **Target word** | Three steps: `python3 tools/build-words.py <word>` to re-verify every start word against the new target, `CONFIG.targetWord` in `script.js`, and the hard-coded copy (the how-to-play line in `index.html`, the win emoji in `buildEmojiGrid()`). Bump `STORAGE_KEYS` too, so old ladders and stats don't leak into the new game. |
 | **Puzzle #1's date** | `CONFIG.epoch` in `script.js`. It is app-side only; the builder does not care. |
 | **Colours** | The `:root` block at the top of `styles.css`: `--bg`, `--panel`, `--border`, `--text`, `--text-dim`, `--accent`, `--accent-bright`, `--key`. |
 | **Tile / key size** | `--tile-size`, `--tile-gap`, `--maxw` in the same block. |
@@ -141,8 +148,8 @@ Everything below is a one- or two-line edit.
 
 ```js
 const CONFIG = {
-  gameName: "PLOP",
-  targetWord: "POOP",
+  gameName: "FISH LADDER",
+  targetWord: "FISH",
   epoch: "2025-08-15",
   debug: false,
   forcePuzzleNumber: null,
@@ -165,17 +172,17 @@ index.html?start=SWIM          # force a starting word
 index.html?debug=1             # turn on debug mode
 ```
 
-And a console API on `window.PLOP`:
+And a console API on `window.LADDER`:
 
 ```js
-PLOP.solve()          // log + return the optimal path for today
-PLOP.optimal("SWIM")  // minimum moves from any word
-PLOP.shareText(true)  // preview the share text
-PLOP.reset()          // clear today's ladder, keep stats
-PLOP.hardReset()      // clear progress, stats and the tutorial flag
-PLOP.setPuzzle(362)   // reload on another puzzle
-PLOP.setDate("2026-03-01")
-PLOP.stats()
+LADDER.solve()          // log + return the optimal path for today
+LADDER.optimal("SWIM")  // minimum moves from any word
+LADDER.shareText(true)  // preview the share text
+LADDER.reset()          // clear today's ladder, keep stats
+LADDER.hardReset()      // clear progress, stats and the tutorial flag
+LADDER.setPuzzle(362)   // reload on another puzzle
+LADDER.setDate("2026-03-01")
+LADDER.stats()
 ```
 
 ## Accessibility and mobile notes

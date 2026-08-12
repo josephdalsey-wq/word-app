@@ -12,17 +12,26 @@ Download the four source lists into tools/sources/ first:
   en_50k.txt    https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/en/en_50k.txt
   badwords.txt  https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en
 
-Then:  python3 tools/build-words.py && node test.js
+Then:  python3 tools/build-words.py [target] && node test.js
 
 The recipe: take the ENABLE word list (lowercase only, so no proper nouns or
 abbreviations), keep the entries that are either in a curated "popular words"
 list or common enough in an OpenSubtitles frequency list, then subtract
 profanity, slurs and the non-English/proper-noun residue. Starting words are the
 frequent, concrete survivors that BFS proves are 3-8 moves from the target.
+
+The target defaults to "fish"; pass another four-letter word as argv[1].
 """
 import collections, json, textwrap
 
 import os
+import sys
+
+# The word every ladder must reach. Change it here (and in CONFIG.targetWord in
+# script.js) to re-theme the game; everything below re-derives from it.
+TARGET = (sys.argv[1] if len(sys.argv) > 1 else "fish").lower()
+assert len(TARGET) == 4 and TARGET.isalpha(), "target must be four letters"
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 SP = os.path.join(HERE, "sources") + os.sep   # downloaded source lists (see README)
 OUT = os.path.join(HERE, "..") + os.sep       # where words.js is written
@@ -65,7 +74,7 @@ tosh toyo tsar tuts vail vena vill vive weet wich wynn yech yipe yogi yoni zeta
 
 # Words whose only purpose here would be as an unpleasant daily headline; keep the game friendly.
 words -= (ldnoobw | OFFENSIVE | NONENGLISH)
-words |= {"poop"}  # the target must always be present
+words |= {TARGET}   # the target must always be playable
 
 # --- Graph / BFS ----------------------------------------------------------
 ALPHA = "abcdefghijklmnopqrstuvwxyz"
@@ -78,8 +87,8 @@ def neighbours(w, S):
                 if x in S:
                     yield x
 
-dist = {"poop": 0}
-q = collections.deque(["poop"])
+dist = {TARGET: 0}
+q = collections.deque([TARGET])
 while q:
     w = q.popleft()
     for n in neighbours(w, words):
@@ -87,7 +96,8 @@ while q:
             dist[n] = dist[w] + 1
             q.append(n)
 
-print("dictionary:", len(words), "| reachable from poop:", len(dist))
+print("target:", TARGET.upper())
+print("dictionary:", len(words), "| reachable from target:", len(dist))
 print("distance histogram:", sorted(collections.Counter(dist.values()).items()))
 
 # --- Start words ----------------------------------------------------------
@@ -129,7 +139,8 @@ print("start words:", len(starts),
 # --- Sanity checks --------------------------------------------------------
 assert all(w in words for w in starts)
 assert all(dist[w] >= 3 for w in starts)
-assert "poop" in words and "swim" in words and "slim" in words
+assert TARGET in words and "swim" in words and "slim" in words
+assert TARGET not in starts, "the target must not also be a starting word"
 
 # --- Emit words.js --------------------------------------------------------
 sorted_words = sorted(words)
@@ -138,6 +149,7 @@ body = "\n".join('  "%s",' % l for l in lines)
 start_lines = textwrap.wrap(" ".join(starts), 96)
 start_body = "\n".join('  "%s",' % l for l in start_lines)
 
+target = TARGET.upper()
 js = f'''/**
  * words.js — bundled game data.
  *
@@ -147,8 +159,8 @@ js = f'''/**
  * list, filtered for profanity, slurs, proper nouns and non-English entries.
  *
  * START_WORDS: {len(starts)} curated daily starting words. Every one of them is
- * guaranteed (by breadth-first search over WORD_LIST) to have a path to POOP,
- * and to be at least 3 moves away so the puzzle is never trivial.
+ * guaranteed (by breadth-first search over WORD_LIST) to have a path to
+ * {target}, and to be at least 3 moves away so the puzzle is never trivial.
  *
  * Both lists are lowercase; the UI uppercases for display.
  */

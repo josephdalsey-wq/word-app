@@ -7,8 +7,8 @@
  * list, filtered for profanity, slurs, proper nouns and non-English entries.
  *
  * START_WORDS: 400 curated daily starting words. Every one of them is
- * guaranteed (by breadth-first search over WORD_LIST) to have a path to POOP,
- * and to be at least 3 moves away so the puzzle is never trivial.
+ * guaranteed (by breadth-first search over WORD_LIST) to have a path to
+ * FISH, and to be at least 3 moves away so the puzzle is never trivial.
  *
  * Both lists are lowercase; the UI uppercases for display.
  */
@@ -131,27 +131,27 @@ const WORD_LIST_CHUNKS = [
 ];
 
 const START_WORD_CHUNKS = [
-  "arms army aunt away babe baby back bags bail ball band bang bank bars bath bear beat beef beep",
-  "beer bell belt best bike bill bird bite blew blow blue boat body bond bone book boom born boss",
-  "bowl boys buck bull burn busy cage cake call calm came camp card care cars cash cast cats cave",
-  "cell chat chef chip city clay club clue coat code cold cops copy cost crew cure cute dare dark",
-  "data date dawn days deal dear deck deep deny desk dish dogs doll done down drag draw drew duck",
-  "dude dump dust duty earn ears ease east easy eyes face fail fair fake fall fans farm fast fate",
-  "feed feel feet fell felt file fill film find fire firm fish five flag flat flow food foot four",
-  "free fuel full gain game gate gave gear gift girl give glad goal gods gold golf gone grab gray",
-  "grew grow guys hail hair hall hand hang hard head hear heat held help hero hide hill hire hold",
-  "hole holy home hope horn host hour huge hung hunt jobs join joke jump jury keep kept keys kick",
-  "kids king kiss knew lack lady laid lake land last late lead left legs lend life lift line link",
-  "lion lips list live load loan lock long lose lost lots loud love luck made maid mail make male",
-  "mask mass mate meal meat meet mile milk mind mine miss mood moon move nail name near neck need",
-  "news next nine nose note nuts odds pack page paid pair park part pass path pick pink pipe pity",
-  "plan play port post pray pull pure push quit race rain rare rate read rent rest rice rich ride",
-  "ring rise risk road rock roll roof room rope rule rush safe sake sale salt sand save seal seat",
-  "seek seen sell send sent sets ship shoe shop show shut side sing sink site size skin skip slip",
-  "slow snow soft sold song sons soon soul soup spit spot star stay step stop suit swim tail talk",
-  "tall tank tape task team tear tell test text thin tied time tiny told tone took tour town trap",
-  "tree trip tune turn vice vote wait wake walk wall warm warn wash wave wear week went west wide",
-  "wife wild wind wine wing wipe wire wise wish woke wolf wood word wore work wrap yard year zero",
+  "arms army aunt babe baby back bags bail ball band bang bank bars bath bear beat beef beep beer",
+  "bell belt best bike bill bird bite blew blow boat body bond bone book boom born boss bowl boys",
+  "buck bull burn busy cage cake call calm came camp card care cars cash cast cats cave cell chat",
+  "chip city coat code cold cook cool cops copy cost cure cute dare dark data date dawn days deal",
+  "dear deck deep deny desk dogs doll done door down drag draw drop duck dude dump dust duty earn",
+  "ears ease east easy eyes face fail fair fake fall fans farm fate feed feel feet fell felt file",
+  "fill film find fire firm five flag flat flew flow food fool foot four free fuel full gain game",
+  "gate gave gear gift girl give glad goal gods gold golf gone good grab gray grow guys hail hair",
+  "hall hand hang hard head hear heat held help hero hide hill hire hold hole holy home hood hook",
+  "hope horn host hour huge hung hunt jobs join joke jump jury keep kept keys kick kids king kiss",
+  "lack lady laid lake land last late lead left legs lend life lift line link lion lips live load",
+  "loan lock long look lose lost lots loud love luck made maid mail make male mask mass mate math",
+  "meal meat meet mile milk mind mine miss mood moon move nail name near neck need news next nine",
+  "noon nose note nuts odds over owns pack page paid pair park part pass path pays pick pigs pink",
+  "pipe pity play pool poor port post pour pray pull pure push race rain rare rate read rent rest",
+  "rice rich ride ring rise risk road rock roll roof room rope rule rush safe sake sale salt sand",
+  "save seal seat seek seen sell send sent sets shed ship shoe shop show shut side sing sink site",
+  "size skip slip slow snow soft sold song sons soon soul soup spin spit spot star stay step stop",
+  "suit swim tail talk tall tank tape task taxi team tear tell test text thin tied time tiny told",
+  "tone took tour town trap trip tune turn vice vote wait wake walk wall warm warn wave wear week",
+  "went west wide wife wild wind wine wing wipe wire woke wolf wood word wore work yard year zero",
   "zone",
 ];
 
