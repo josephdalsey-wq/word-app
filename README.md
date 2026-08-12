@@ -13,7 +13,11 @@ SWIM → SLIM → SLIP → SLOP → PLOP → POOP
 
 ## Running it
 
-Open `index.html` in a browser. That is the whole story — the page loads two
+**The one-file way.** `plop.html` is the whole game inlined into a single file
+— no folder, no server. Download it, double-tap it, play. It is what you want
+if you just came here to play, or want the game on your phone.
+
+**From the source files.** Open `index.html` in a browser. The page loads two
 local scripts and nothing else, so `file://` works.
 
 If you would rather serve it (needed only if you want a real origin for
@@ -23,6 +27,12 @@ localStorage across ports, or you're testing on a phone on the same network):
 python3 -m http.server 8000     # then visit http://localhost:8000
 # or
 npx serve .
+```
+
+Rebuild the single-file version after changing any source file:
+
+```sh
+node tools/bundle.js
 ```
 
 Run the test suite with:
@@ -45,6 +55,7 @@ proof that **all 400 starting words can reach POOP**.
 | `words.js` | Generated data: the dictionary and the starting-word list. |
 | `test.js` | Headless Node test suite. |
 | `tools/build-words.py` | Regenerates `words.js` from public word lists. |
+| `tools/bundle.js` | Inlines everything into the single-file `plop.html`. |
 
 `script.js` is organised top to bottom as:
 
