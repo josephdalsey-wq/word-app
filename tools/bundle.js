@@ -46,20 +46,33 @@ if (html.includes("styles.css") || html.includes('src="words.js"')) {
 }
 
 if (isFragment) {
-  // Strip the document shell and the head-only tags the host provides itself,
-  // keeping <title> so the page still names itself.
-  html = html
-    .replace(/^[\s\S]*?<title>/, "<title>")
-    .replace(/<\/title>\s*/, "</title>\n")
-    // Drop the whole favicon line. Matching the tag with [^>]* does NOT work:
-    // the href is an SVG data URI containing its own ">" characters, so the
-    // match ends early and leaves the tag's tail behind as visible text.
-    .replace(/^.*rel="icon".*\r?\n/m, "")
-    .replace(/<\/head>\s*<body>\s*/, "")
-    .replace(/\s*<\/body>\s*<\/html>\s*$/, "\n");
+  // Keep only the three pieces the host cannot supply: the title, the inlined
+  // stylesheet and the body. Everything else in <head> — favicon, viewport,
+  // Open Graph tags — belongs to the host's own shell.
+  //
+  // This picks the pieces out rather than stripping the shell away tag by tag.
+  // Stripping is what broke before: the favicon's href is an SVG data URI full
+  // of ">" characters, so a <link ...> pattern matched too little and left the
+  // tag's tail rendering as stray text in the corner of the page.
+  const pick = (re, what) => {
+    const m = html.match(re);
+    if (!m) {
+      console.error("fragment build could not find the " + what);
+      process.exit(1);
+    }
+    return m;
+  };
 
-  // The shell must be fully gone: anything left over renders as stray text.
-  const leftovers = ["<link", "<meta", "</head>", "<body>", "</html>", "</svg>"]
+  const title = pick(/<title>[\s\S]*?<\/title>/, "<title>")[0];
+  const style = pick(/<style>[\s\S]*?<\/style>/, "inlined <style>")[0];
+  const body = pick(/<body>([\s\S]*)<\/body>/, "<body>")[1];
+
+  html = title + "\n" + style + "\n" + body.trim() + "\n";
+
+  // Nothing head-only or shell-shaped may survive; it would render as text.
+  // Match exact tags — a substring like "<head" also hits "<header class=…>".
+  const leftovers = ["<link", "<meta", "<head>", "</head>", "<body>", "</body>",
+                     "<html", "</html>", "</svg>"]
     .filter((tag) => html.includes(tag));
   if (leftovers.length) {
     console.error("fragment still contains document-shell markup: " + leftovers.join(", "));
