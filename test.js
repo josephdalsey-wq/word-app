@@ -72,10 +72,17 @@ check("5. fewer than four letters fails",
   G.submitGuess("").reason === G.MESSAGES.length);
 check("non-alphabetic input is stripped and rejected",
   G.submitGuess("SL1M").reason === G.MESSAGES.length);
-check("duplicate words are rejected", (() => {
+check("revisiting an already-used word is allowed", (() => {
   G.game.state.ladder = ["SWIM", "SLIM", "SLIP"];
-  // SLIP → SLIM is a legal one-letter move but SLIM is already used.
-  return G.submitGuess("SLIM").reason === G.MESSAGES.duplicate;
+  // SLIP → SLIM is a legal one-letter move, and backtracking onto a word
+  // already in the ladder is permitted — it only costs the player moves.
+  const result = G.submitGuess("SLIM");
+  return result.ok === true &&
+         G.game.state.ladder.join(",") === "SWIM,SLIM,SLIP,SLIM";
+})());
+check("re-submitting the previous word is still rejected (zero letters changed)", (() => {
+  G.game.state.ladder = ["SWIM", "SLIM"];
+  return G.submitGuess("SLIM").reason === G.MESSAGES.transition;
 })());
 check("a valid guess is appended to the ladder", (() => {
   G.game.state.ladder = ["SWIM"];

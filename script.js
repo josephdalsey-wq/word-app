@@ -43,8 +43,7 @@ const STORAGE_KEYS = {
 const MESSAGES = {
   length: "Enter 4 letters",
   unknown: "Not a valid word",
-  transition: "Change exactly one letter",
-  duplicate: "Already used"
+  transition: "Change exactly one letter"
 };
 
 /* -----------------------------------------------------------------------------
@@ -372,7 +371,11 @@ function submitGuess(rawGuess) {
 
   var previous = state.ladder[state.ladder.length - 1];
   if (!isValidTransition(previous, guess)) return { ok: false, reason: MESSAGES.transition };
-  if (state.ladder.indexOf(guess) !== -1) return { ok: false, reason: MESSAGES.duplicate };
+
+  // Revisiting a word you have already used is allowed: backtracking is a
+  // legitimate way to escape a dead end, and it only ever costs you moves.
+  // (Re-submitting the *previous* word is still rejected above — that changes
+  // zero letters, not one.)
 
   var changed = changedIndex(previous, guess);
   state.ladder.push(guess);
