@@ -61,12 +61,23 @@ const MESSAGES = {
 // (used by test.js) it exports them instead.
 const DATA = (typeof module !== "undefined" && module.exports)
   ? require("./words.js")
-  : { WORD_LIST: WORD_LIST, START_WORDS: START_WORDS };
+  : { WORD_LIST: WORD_LIST, COMMON_WORDS: COMMON_WORDS, START_WORDS: START_WORDS };
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-/** Every playable word, uppercase, in a Set for O(1) membership tests. */
+/**
+ * Two word sets doing two different jobs.
+ *
+ * DICTIONARY is everything the player may play — the full ENABLE list. Being
+ * generous here is the whole point: telling someone CIST is not a word when
+ * Merriam-Webster says otherwise is the worst thing a word game can do.
+ *
+ * PAR_WORDS is the subset a reasonable person knows, and par is measured over
+ * it. Measuring par over DICTIONARY would route the benchmark through words
+ * nobody would ever find and silently make every score look worse.
+ */
 const DICTIONARY = new Set(DATA.WORD_LIST.map(function (w) { return w.toUpperCase(); }));
+const PAR_WORDS = new Set(DATA.COMMON_WORDS.map(function (w) { return w.toUpperCase(); }));
 
 /** Curated daily starting words (all verified to have a path to the target). */
 const START_LIST = DATA.START_WORDS.map(function (w) { return w.toUpperCase(); });
@@ -101,15 +112,16 @@ function isValidTransition(previous, next) {
   return diffCount(String(previous).toUpperCase(), String(next).toUpperCase()) === 1;
 }
 
-/** All dictionary words one letter away from `word`. */
-function neighbours(word) {
+/** Words one letter away from `word` within `wordSet` (defaults to playable). */
+function neighbours(word, wordSet) {
+  var set = wordSet || DICTIONARY;
   var out = [];
   for (var i = 0; i < word.length; i++) {
     for (var c = 0; c < ALPHABET.length; c++) {
       var letter = ALPHABET[c];
       if (letter === word[i]) continue;
       var candidate = word.slice(0, i) + letter + word.slice(i + 1);
-      if (DICTIONARY.has(candidate)) out.push(candidate);
+      if (set.has(candidate)) out.push(candidate);
     }
   }
   return out;
@@ -120,10 +132,11 @@ function neighbours(word) {
  * Returns the full path including both endpoints, or null when unreachable.
  * BFS on an unweighted graph is what makes the result provably optimal.
  */
-function calculateShortestPath(start, target) {
+function calculateShortestPath(start, target, wordSet) {
+  var set = wordSet || PAR_WORDS;   // par is measured over the common words
   start = String(start).toUpperCase();
   target = String(target).toUpperCase();
-  if (!DICTIONARY.has(start) || !DICTIONARY.has(target)) return null;
+  if (!set.has(start) || !set.has(target)) return null;
   if (start === target) return [start];
 
   var cameFrom = new Map();       // word → the word we reached it from
@@ -133,7 +146,7 @@ function calculateShortestPath(start, target) {
 
   while (head < queue.length) {
     var word = queue[head++];
-    var next = neighbours(word);
+    var next = neighbours(word, set);
     for (var i = 0; i < next.length; i++) {
       var n = next[i];
       if (cameFrom.has(n)) continue;
@@ -149,9 +162,9 @@ function calculateShortestPath(start, target) {
   return null;
 }
 
-/** Minimum number of moves from `start` to the target, or null if unreachable. */
-function optimalMoves(start, target) {
-  var path = calculateShortestPath(start, target || CONFIG.targetWord);
+/** Par: fewest moves from `start` to the target using only common words. */
+function optimalMoves(start, target, wordSet) {
+  var path = calculateShortestPath(start, target || CONFIG.targetWord, wordSet);
   return path ? path.length - 1 : null;
 }
 
@@ -286,8 +299,8 @@ function defaultStats() {
     maxStreak: 0,
     totalMoves: 0,         // for the average
     totalOverOptimal: 0,
-    perfect: 0,            // completions that matched the optimal length
-    bestOverOptimal: null, // best (lowest) "moves over optimal" ever
+    perfect: 0,            // completions that matched par or beat it
+    bestOverOptimal: null, // best (lowest) "moves over par" ever
     distribution: {},      // move count → number of completions
     lastPlayedPuzzle: null,
     lastCompletedPuzzle: null
@@ -325,7 +338,7 @@ function updateStats(stats, puzzleNumber, moves, optimal) {
   if (typeof optimal === "number") {
     var over = moves - optimal;
     stats.totalOverOptimal += over;
-    if (over === 0) stats.perfect += 1;
+    if (over <= 0) stats.perfect += 1;   // matching par counts, beating it too
     if (stats.bestOverOptimal === null || over < stats.bestOverOptimal) {
       stats.bestOverOptimal = over;
     }
@@ -766,11 +779,13 @@ function showResults() {
   score.textContent = "";
   score.appendChild(scoreCell(moves, "Your moves"));
   if (typeof optimal === "number") {
-    score.appendChild(scoreCell(optimal, "Optimal"));
+    score.appendChild(scoreCell(optimal, "Par"));
+    // Par is the best route through *common* words, so a player who finds a
+    // shortcut through an obscure one can legitimately come in under it.
     score.appendChild(scoreCell(
-      over === 0 ? "Perfect!" : "+" + over,
-      over === 0 ? "Shortest path" : "Over optimal",
-      over === 0
+      over < 0 ? over : (over === 0 ? "Par!" : "+" + over),
+      over < 0 ? "Under par" : (over === 0 ? "Matched par" : "Over par"),
+      over <= 0
     ));
   }
 
@@ -803,7 +818,9 @@ function buildShareText(includeLadder) {
   var header = CONFIG.gameName + " #" + state.puzzleNumber;
   var summary = moves + " " + plural(moves, "move") + " 🐟";
   if (typeof optimal === "number") {
-    summary += moves === optimal ? " · perfect path!" : " · optimal " + optimal;
+    summary += moves < optimal ? " · under par (" + optimal + ")!"
+             : moves === optimal ? " · par!"
+             : " · par " + optimal;
   }
   var parts = [header, summary, buildEmojiGrid(state.ladder)];
   if (includeLadder) parts.push(state.ladder.join(" → "));
@@ -884,7 +901,8 @@ function showStats() {
   var avgOver = s.completed ? (s.totalOverOptimal / s.completed).toFixed(1) : "—";
   var best = s.bestOverOptimal === null
     ? "—"
-    : (s.bestOverOptimal === 0 ? "Perfect" : "+" + s.bestOverOptimal);
+    : (s.bestOverOptimal < 0 ? String(s.bestOverOptimal)
+      : (s.bestOverOptimal === 0 ? "Par" : "+" + s.bestOverOptimal));
 
   [
     [s.played, "Played"],
@@ -892,8 +910,8 @@ function showStats() {
     [s.currentStreak, "Current streak"],
     [s.maxStreak, "Max streak"],
     [avgMoves, "Avg moves"],
-    [avgOver, "Avg over optimal"],
-    [s.perfect, "Perfect paths"],
+    [avgOver, "Avg vs par"],
+    [s.perfect, "Par or better"],
     [best, "Best result"]
   ].forEach(function (pair) { grid.appendChild(statTile(pair[0], pair[1])); });
 
@@ -956,7 +974,7 @@ function showYesterday() {
   var path = calculateShortestPath(start, CONFIG.targetWord);
 
   [["Puzzle", "#" + number], ["Starting word", start],
-   ["Optimal", path ? (path.length - 1) + " " + plural(path.length - 1, "move") : "—"]]
+   ["Par", path ? (path.length - 1) + " " + plural(path.length - 1, "move") : "—"]]
     .forEach(function (pair) {
       var row = document.createElement("div");
       row.className = "kv";
@@ -974,7 +992,7 @@ function showYesterday() {
   if (path) {
     var label = document.createElement("p");
     label.className = "modal__label";
-    label.textContent = "One shortest path";
+    label.textContent = "One par route";
     body.appendChild(label);
     var ladder = document.createElement("div");
     ladder.className = "ladder";
@@ -1017,7 +1035,7 @@ function renderDebugBar() {
   if (!CONFIG.debug) return;
   var bar = document.createElement("div");
   bar.className = "debug-bar";
-  bar.textContent = "DEBUG · optimal " + ensureOptimal() + " moves · ";
+  bar.textContent = "DEBUG · par " + ensureOptimal() + " moves · ";
   var reset = document.createElement("button");
   reset.type = "button";
   reset.className = "footer__btn";
@@ -1040,6 +1058,13 @@ function debugApi() {
       return path;
     },
     optimal: function (start) { return optimalMoves(start || game.puzzle.startWord); },
+    /** The true shortest route, allowed to use every playable word. */
+    shortest: function (start) {
+      var path = calculateShortestPath(start || game.puzzle.startWord,
+                                       CONFIG.targetWord, DICTIONARY);
+      console.log(path ? path.join(" → ") : "no path found");
+      return path;
+    },
     /** Preview the share text without touching the clipboard. */
     shareText: function (includeLadder) { return buildShareText(!!includeLadder); },
     /** Wipe today's ladder (keeps stats). */
@@ -1054,7 +1079,8 @@ function debugApi() {
     setPuzzle: function (n) { location.search = "?puzzle=" + n; },
     setDate: function (iso) { location.search = "?date=" + iso; },
     stats: function () { return game.stats; },
-    dictionarySize: DICTIONARY.size
+    dictionarySize: DICTIONARY.size,
+    parWordCount: PAR_WORDS.size
   };
 }
 

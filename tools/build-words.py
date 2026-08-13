@@ -51,12 +51,24 @@ for line in open(SP+"en_50k.txt"):
         w = p[0].lower()
         freq[w] = max(freq.get(w, 0), int(p[1]))
 
-words = popular | {w for w in enable if freq.get(w, 0) >= 200}
+# Two lists with two different jobs.
+#
+# ACCEPT is everything the player may type. It is the whole ENABLE list, so a
+# real word is never rejected as "not a word" -- that is the single most
+# annoying thing a word game can do.
+#
+# COMMON is the subset a reasonable person actually knows. Par and the daily
+# start words are derived from it, so the benchmark stays human: par computed
+# over ACCEPT would route through words like CIST or FISC and make every
+# player's score look worse against a path nobody would ever find.
+accept = set(enable)
+common = popular | {w for w in enable if freq.get(w, 0) >= 200}
 
 # --- Removals -------------------------------------------------------------
 OFFENSIVE = set("""
 arse bung crap dyke fart hell jism jizz jugs loin piss pube puke slag turd homo paki gyps gypo
 gook wops dago spaz gimp hebe injun kraut coon spic chink shat scum wuss damn hoes tits pecs
+fags wogs yids mick dong knob titi sext caca kaka poon smeg
 """.split())
 
 # Foreign words, transliterations, proper nouns, brand/abbrev noise that survived the filters.
@@ -73,8 +85,12 @@ tosh toyo tsar tuts vail vena vill vive weet wich wynn yech yipe yogi yoni zeta
 """.split())
 
 # Words whose only purpose here would be as an unpleasant daily headline; keep the game friendly.
-words -= (ldnoobw | OFFENSIVE | NONENGLISH)
-words |= {TARGET}   # the target must always be playable
+blocked = ldnoobw | OFFENSIVE | NONENGLISH
+accept -= blocked
+common -= blocked
+accept |= {TARGET}  # the target must always be playable
+common |= {TARGET}
+words = common      # the graph below drives par and start-word selection
 
 # --- Graph / BFS ----------------------------------------------------------
 ALPHA = "abcdefghijklmnopqrstuvwxyz"
@@ -97,7 +113,8 @@ while q:
             q.append(n)
 
 print("target:", TARGET.upper())
-print("dictionary:", len(words), "| reachable from target:", len(dist))
+print("accept list:", len(accept), "| common list:", len(common),
+      "| reachable from target (common):", len(dist))
 print("distance histogram:", sorted(collections.Counter(dist.values()).items()))
 
 # --- Start words ----------------------------------------------------------
@@ -139,34 +156,49 @@ print("start words:", len(starts),
 # --- Sanity checks --------------------------------------------------------
 assert all(w in words for w in starts)
 assert all(dist[w] >= 3 for w in starts)
-assert TARGET in words and "swim" in words and "slim" in words
+assert TARGET in accept and TARGET in common
+assert "cist" in accept, "the accept list must include uncommon-but-real words"
+assert common <= accept, "every common word must also be accepted"
 assert TARGET not in starts, "the target must not also be a starting word"
+assert not (accept & blocked), "a blocked word survived into the accept list"
 
 # --- Emit words.js --------------------------------------------------------
-sorted_words = sorted(words)
-lines = textwrap.wrap(" ".join(sorted_words), 96)
-body = "\n".join('  "%s",' % l for l in lines)
-start_lines = textwrap.wrap(" ".join(starts), 96)
-start_body = "\n".join('  "%s",' % l for l in start_lines)
+def chunk(seq):
+    return "\n".join('  "%s",' % l for l in textwrap.wrap(" ".join(sorted(seq)), 96))
+
+sorted_words = sorted(accept)
+body = chunk(accept)
+common_body = chunk(common)
+start_body = chunk(starts)
 
 target = TARGET.upper()
 js = f'''/**
- * words.js — bundled game data.
+ * words.js — bundled game data. Three lists, stored as space-separated chunks
+ * (small download, trivial to diff) and expanded into Sets at load time.
  *
- * WORD_LIST: {len(sorted_words)} common four-letter English words, stored as space-separated
- * chunks (small download, trivial to diff) and expanded into a Set at load time.
- * Sources: the ENABLE open word list intersected with an OpenSubtitles frequency
- * list, filtered for profanity, slurs, proper nouns and non-English entries.
+ * WORD_LIST: {len(sorted_words)} four-letter words the player is allowed to play — the whole
+ * ENABLE open word list, minus profanity, slurs and non-English entries. It is
+ * deliberately generous: a real word like CIST or FISC should never be rejected
+ * as "not a word".
  *
- * START_WORDS: {len(starts)} curated daily starting words. Every one of them is
- * guaranteed (by breadth-first search over WORD_LIST) to have a path to
- * {target}, and to be at least 3 moves away so the puzzle is never trivial.
+ * COMMON_WORDS: {len(common)} of those that a reasonable person actually knows (ENABLE
+ * intersected with an OpenSubtitles frequency list). Par is measured over this
+ * subset, so the benchmark stays something a human could find. Measured over the
+ * full accept list instead, par would route through obscure words and quietly
+ * make every player's score look worse.
  *
- * Both lists are lowercase; the UI uppercases for display.
+ * START_WORDS: {len(starts)} curated daily starting words, all drawn from COMMON_WORDS and
+ * each proven by breadth-first search to reach {target} in at least 3 moves.
+ *
+ * All three are lowercase; the UI uppercases for display.
  */
 
 const WORD_LIST_CHUNKS = [
 {body}
+];
+
+const COMMON_WORD_CHUNKS = [
+{common_body}
 ];
 
 const START_WORD_CHUNKS = [
@@ -174,12 +206,17 @@ const START_WORD_CHUNKS = [
 ];
 
 const WORD_LIST = WORD_LIST_CHUNKS.join(" ").split(" ");
+const COMMON_WORDS = COMMON_WORD_CHUNKS.join(" ").split(" ");
 const START_WORDS = START_WORD_CHUNKS.join(" ").split(" ");
 
 /* Exported for the Node test harness; in the browser the consts above are
    ordinary script-scope globals that script.js reads directly. */
 if (typeof module !== "undefined" && module.exports) {{
-  module.exports = {{ WORD_LIST: WORD_LIST, START_WORDS: START_WORDS }};
+  module.exports = {{
+    WORD_LIST: WORD_LIST,
+    COMMON_WORDS: COMMON_WORDS,
+    START_WORDS: START_WORDS
+  }};
 }}
 '''
 open(OUT+"words.js", "w").write(js)

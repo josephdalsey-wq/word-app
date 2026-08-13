@@ -17,7 +17,7 @@ global.localStorage = {
 };
 
 const G = require("./script.js");
-const { WORD_LIST, START_WORDS } = require("./words.js");
+const { WORD_LIST, COMMON_WORDS, START_WORDS } = require("./words.js");
 
 let passed = 0;
 let failed = 0;
@@ -47,6 +47,26 @@ check("SWIM/SLIM/SLIP are in the dictionary",
 check("the target's three neighbours are present",
   G.isValidWord("DISH") && G.isValidWord("WISH") && G.isValidWord("FIST"));
 check("lookup is case-insensitive", G.isValidWord("swim") && G.isValidWord("Swim"));
+
+// --- the accept list is deliberately wider than the par list ----------------
+check("uncommon-but-real words are playable (CIST, FISC, WOLD, EWER, SATE)",
+  ["CIST", "FISC", "WOLD", "EWER", "SATE"].every((w) => G.isValidWord(w)),
+  ["CIST", "FISC", "WOLD", "EWER", "SATE"].filter((w) => !G.isValidWord(w)).join(", "));
+check("the par list is a strict subset of the playable list",
+  COMMON_WORDS.every((w) => WORD_LIST.includes(w)) && COMMON_WORDS.length < WORD_LIST.length,
+  COMMON_WORDS.length + " of " + WORD_LIST.length);
+check("par is measured over common words only", (() => {
+  // COST -> CIST -> FIST -> FISH is 3 moves but routes through CIST, which is
+  // playable and not common; par should ignore it and stay at 4.
+  const par = G.optimalMoves("COST");
+  const shortest = G.calculateShortestPath("COST", "FISH", G.DICTIONARY).length - 1;
+  return par === 4 && shortest === 3;
+})());
+check("a par route never uses a word outside the common list",
+  G.calculateShortestPath("COST", "FISH").every((w) => COMMON_WORDS.includes(w.toLowerCase())));
+check("still no slurs or profanity in the wider list",
+  ["fags", "wogs", "yids", "mick", "shit", "fuck", "cunt", "dick", "coon", "spic"]
+    .every((w) => !G.DICTIONARY.has(w.toUpperCase())));
 
 /* -------------------------------------------------------------------------- */
 section("Spec case 1–5: guess validation");
@@ -257,7 +277,13 @@ section("Statistics");
   memory.clear();
   let stats = G.defaultStats();
   stats = G.updateStats(stats, 10, 7, 5);
-  check("first completion is recorded",
+  check("beating par counts as par-or-better", (() => {
+  memory.clear();
+  let s = G.defaultStats();
+  s = G.updateStats(s, 1, 3, 4);          // three moves against a par of four
+  return s.perfect === 1 && s.bestOverOptimal === -1 && s.totalOverOptimal === -1;
+})());
+check("first completion is recorded",
     stats.completed === 1 && stats.currentStreak === 1 && stats.distribution[7] === 1);
   check("over-optimal is tracked", stats.totalOverOptimal === 2 && stats.bestOverOptimal === 2);
 
@@ -304,6 +330,8 @@ check("no sampled slurs or profanity in the dictionary",
   OFFENSIVE_SAMPLE.every((w) => !G.DICTIONARY.has(w.toUpperCase())));
 check("start words are a subset of the dictionary",
   START_WORDS.every((w) => G.isValidWord(w)));
+check("start words are all common words",
+  START_WORDS.every((w) => COMMON_WORDS.includes(w)));
 
 /* -------------------------------------------------------------------------- */
 console.log("\n" + passed + " passed, " + failed + " failed\n");

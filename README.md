@@ -41,7 +41,7 @@ Run the test suite with:
 node test.js
 ```
 
-53 checks covering guess validation, the win state, deterministic daily
+64 checks covering guess validation, the win state, deterministic daily
 puzzles, BFS optimality, save/restore and the statistics rollup — including a
 proof that **all 400 starting words can reach FISH**.
 
@@ -91,11 +91,23 @@ discarded rather than resumed.
 
 ## Where the words live
 
-- **Dictionary** — `words.js`, `WORD_LIST`: **2,149** four-letter words, stored
-  as space-separated chunks and expanded into a `Set` at load. 2,008 of them
-  are reachable from FISH.
-- **Starting words** — `words.js`, `START_WORDS`: **400** curated words, so the
-  rotation runs 400 days before repeating.
+Three lists in `words.js`, each with a different job:
+
+- **`WORD_LIST`** — **3,670** words you are allowed to play: the whole ENABLE
+  open word list minus profanity, slurs and non-English entries. Deliberately
+  generous, so a real word like `CIST` or `FISC` is never rejected.
+- **`COMMON_WORDS`** — the **2,144** of those a reasonable person actually
+  knows. **Par is measured over this subset only**, so the benchmark stays
+  something a human could find. Measured over the full accept list, par would
+  route through obscure words and quietly make every score look worse — on 224
+  of the 400 start words it would drop by an average of 1.3 moves.
+- **`START_WORDS`** — **400** curated daily starting words, all drawn from
+  `COMMON_WORDS`, so the rotation runs 400 days before repeating.
+
+Because the two lists differ, **a player can legitimately come in under par**
+by finding a shortcut through an uncommon word. That is treated as a win, not
+an error: the results panel says "Under par" and the stats count it under "Par
+or better".
 - **Regenerating both** — `tools/build-words.py` (download instructions are in
   its docstring). It builds the graph, runs BFS from the target and only emits
   start words with a verified path. The target is `argv[1]`, defaulting to
@@ -111,16 +123,16 @@ puzzle than a target with more entrances would be.
 
 ### Limitations of the bundled dictionary
 
-- **It is a common-words list, not a full one.** ENABLE has ~3,900 four-letter
-  words; frequency filtering cuts that to ~2,149. Real words like `sate`,
-  `wold` and `ewer` are rejected. That keeps the puzzle fair for casual players
-  but will occasionally reject a word you know.
-- **"Optimal" is optimal *for this dictionary*.** Add words and some shortest
-  paths get shorter; remove words and they get longer. Stats recorded before a
-  dictionary change stay on the old basis.
-- **Some survivors are obscure** (`moil`, `deft`, `abut`). They can make the
-  theoretical optimum hard to find with only common words, so a `+1` is a
-  perfectly respectable score.
+- **ENABLE is not Merriam-Webster.** It is a Scrabble word list: broad, but it
+  has its own omissions and its own oddities (`aals`, `ains`, `bize`). If a word
+  you know is still rejected, it is missing from ENABLE, and the fix is to add
+  it by hand in `tools/build-words.py`.
+- **Par depends on the common list.** Move a word between the two lists and par
+  shifts for some puzzles. Stats recorded before such a change stay on the old
+  basis.
+- **The common/uncommon split is frequency, not judgement.** It comes from an
+  OpenSubtitles frequency list, so a word you consider everyday may sit on the
+  uncommon side (and so be playable but never used for par).
 - **Filtering is a blocklist, not a guarantee.** Profanity, slurs, proper nouns
   and non-English entries were removed with a published bad-words list plus a
   hand-built list; something distasteful could still have slipped through. Add
@@ -142,6 +154,8 @@ Everything below is a one- or two-line edit.
 | **Tile / key size** | `--tile-size`, `--tile-gap`, `--maxw` in the same block. |
 | **Error copy** | The `MESSAGES` object in `script.js`. |
 | **Starting words** | `START_WORD_CHUNKS` in `words.js`, or better, the selection filters (`STOP`, `NAMES`, `BAD_TONE`, the frequency threshold) in `tools/build-words.py`. |
+| **Which words are playable** | `accept` in `tools/build-words.py` — currently all of ENABLE minus the blocklists. Add a missing word there and regenerate. |
+| **How hard par is** | `common` in the same file: the `freq.get(w, 0) >= 200` threshold decides which words par may route through. |
 | **Favicon / emoji** | The `<link rel="icon">` data URI in `index.html`; share emoji in `buildEmojiGrid()`. |
 
 ## Development mode
