@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="A daily word ladder game: change one letter at a time and get to FISH in as few moves as possible.">
-<meta name="theme-color" content="#191919">
+<meta name="theme-color" content="#0c1a21">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Fish Ladder</title>
@@ -79,15 +79,18 @@
 
     <p class="modal__label">Example</p>
     <div class="example">
-      <div class="row row--static" aria-label="B A R N">
-        <div class="tile">B</div><div class="tile">A</div><div class="tile">R</div><div class="tile">N</div>
+      <div class="row row--static" aria-label="W A S H. S and H are already in place for FISH.">
+        <div class="tile">W</div><div class="tile">A</div>
+        <div class="tile tile--correct">S</div><div class="tile tile--correct">H</div>
       </div>
-      <div class="row row--static" aria-label="B O R N, the second letter changed from A to O">
-        <div class="tile">B</div><div class="tile tile--changed">O</div><div class="tile">R</div><div class="tile">N</div>
+      <div class="row row--static" aria-label="W I S H. The second letter changed from A to I. I, S and H are in place for FISH.">
+        <div class="tile">W</div><div class="tile tile--correct tile--changed">I</div>
+        <div class="tile tile--correct">S</div><div class="tile tile--correct">H</div>
       </div>
     </div>
-    <p class="modal__caption">Only the second letter changed: <strong>A</strong> &rarr;
-      <strong class="accent-text">O</strong>.</p>
+    <p class="modal__caption">One letter changed: <strong>A</strong> &rarr;
+      <strong class="accent-text">I</strong>. Filled tiles are letters already sitting in
+      the right spot for <strong class="accent-text">FISH</strong> — three down, one to go.</p>
 
     <p>A new starting word is chosen daily. Can you find the shortest path?</p>
 
