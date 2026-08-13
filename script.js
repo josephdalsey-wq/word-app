@@ -28,6 +28,13 @@ const CONFIG = {
   gameName: "FISH LADDER",     // shown in the header and in share text
   targetWord: "FISH",          // the word every ladder must reach
   epoch: "2025-08-15",         // puzzle #1 was played on this calendar date
+
+  // Advances the whole series by this many puzzles. Bump it by 1 to retire the
+  // current word and push a fresh one to everybody immediately, without waiting
+  // for midnight — the puzzle number moves on, so saved progress for the old
+  // number is dropped and every player starts the new word together.
+  puzzleOffset: 1,
+
   debug: false,                // true → log the optimal path, show the debug bar
   forcePuzzleNumber: null,     // e.g. 362 to pin a specific puzzle
   forceStartWord: null,        // e.g. "SWIM" to pin a specific start word
@@ -183,7 +190,7 @@ function getDailyPuzzle(date) {
   var when = date || (CONFIG.forceDate ? parseLocalDate(CONFIG.forceDate) : new Date());
   var number = CONFIG.forcePuzzleNumber !== null
     ? CONFIG.forcePuzzleNumber
-    : Math.max(1, daysSinceEpoch(when) + 1);
+    : Math.max(1, daysSinceEpoch(when) + 1 + CONFIG.puzzleOffset);
   var start = CONFIG.forceStartWord
     ? CONFIG.forceStartWord.toUpperCase()
     : startWordFor(number);
@@ -674,12 +681,26 @@ function openModal(id) {
   if (target) target.focus();
 }
 
-function closeModal() {
+/**
+ * Close the open dialog.
+ *
+ * `returnFocus` should be true only when the close came from the keyboard
+ * (Escape, or Enter/Space on a button). Returning focus to the trigger after a
+ * *pointer* close leaves an invisible focus ring on a footer button, and the
+ * player's next Enter re-opens that modal instead of submitting their word.
+ * On a pointer close we park focus on the board instead.
+ */
+function closeModal(returnFocus) {
   if (!isModalOpen()) return;
   el.overlay.hidden = true;
   if (el[openModalId]) el[openModalId].hidden = true;
   openModalId = null;
-  if (lastFocused && lastFocused.focus) lastFocused.focus();
+
+  if (returnFocus && lastFocused && lastFocused.focus) {
+    lastFocused.focus();
+  } else if (el.board && el.board.focus) {
+    el.board.focus({ preventScroll: true });
+  }
 }
 
 /** Keep Tab inside the open dialog. */
@@ -832,7 +853,7 @@ function replayPuzzle() {
   game.state.completed = false;
   game.state.current = "";
   saveState(game.state);
-  closeModal();
+  closeModal(false);   // straight back to the board, ready to type
   renderBoard();
   renderHint();
   announce("Board reset. Starting word " + game.puzzle.startWord + ".");
@@ -1046,7 +1067,8 @@ function bindEvents() {
 
   // Physical keyboard
   document.addEventListener("keydown", function (event) {
-    if (event.key === "Escape" && isModalOpen()) { closeModal(); return; }
+    // Escape is a keyboard close, so focus goes back to whatever opened it.
+    if (event.key === "Escape" && isModalOpen()) { closeModal(true); return; }
     if (event.key === "Tab") { trapFocus(event); return; }
     if (event.ctrlKey || event.metaKey || event.altKey) return;
 
@@ -1073,7 +1095,9 @@ function bindEvents() {
   el.overlay.addEventListener("click", function (event) {
     if (event.target === el.overlay || event.target.hasAttribute("data-close")) {
       if (openModalId === "modal-help") writeJSON(STORAGE_KEYS.tutorial, { seen: true });
-      closeModal();
+      // detail === 0 means the click was synthesised by the keyboard (Enter or
+      // Space on the button); a real pointer click reports a click count.
+      closeModal(event.detail === 0);
     }
   });
 

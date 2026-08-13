@@ -135,6 +135,11 @@ function freshState(startWord) {
 /* -------------------------------------------------------------------------- */
 section("Spec case 9: deterministic daily puzzles");
 
+// puzzleOffset shifts the whole series; pin it to 0 so these assert the raw
+// date-to-number mapping, then restore it for the offset test below.
+const realOffset = G.CONFIG.puzzleOffset;
+G.CONFIG.puzzleOffset = 0;
+
 const p1 = G.getDailyPuzzle(new Date(2025, 7, 15));   // epoch day
 const p2 = G.getDailyPuzzle(new Date(2025, 7, 16));
 const p1again = G.getDailyPuzzle(new Date(2025, 7, 15));
@@ -155,6 +160,20 @@ check("start words do not repeat within one full cycle", (() => {
 })());
 check("start word is never the target",
   START_WORDS.every((w) => w.toUpperCase() !== G.CONFIG.targetWord));
+
+check("puzzleOffset advances the series without breaking determinism", (() => {
+  const day = new Date(2026, 0, 10);
+  G.CONFIG.puzzleOffset = 0;
+  const base = G.getDailyPuzzle(day);
+  G.CONFIG.puzzleOffset = 1;
+  const bumped = G.getDailyPuzzle(day);
+  G.CONFIG.puzzleOffset = realOffset;
+  return bumped.number === base.number + 1 &&
+         bumped.startWord !== base.startWord &&
+         bumped.startWord === G.startWordFor(base.number + 1);
+})());
+check("an offset puzzle still has a solvable start word",
+  G.calculateShortestPath(G.getDailyPuzzle(new Date(2026, 0, 10)).startWord, "FISH") !== null);
 
 /* -------------------------------------------------------------------------- */
 section("Spec case 10: BFS shortest path");
