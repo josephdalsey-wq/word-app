@@ -1,0 +1,2011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="A daily word ladder game: change one letter at a time and get to FISH in as few moves as possible.">
+<meta name="theme-color" content="#191919">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Fish Ladder</title>
+
+<!-- Link previews in Messages / WhatsApp / Slack / Discord. The image path is
+     relative, which the major scrapers resolve against the page URL. If a
+     scraper ever ignores it, swap in the absolute https:// URL of your site. -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Fish Ladder">
+<meta property="og:description" content="Change one letter at a time and get to FISH in as few moves as possible. A new puzzle every day.">
+<meta property="og:image" content="og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Fish Ladder">
+<meta name="twitter:description" content="Change one letter at a time and get to FISH in as few moves as possible. A new puzzle every day.">
+<meta name="twitter:image" content="og-image.png">
+<style>
+/* ==========================================================================
+   FISH LADDER — a daily word ladder
+   Dark, mobile-first. All colours live in the :root block below, so a full
+   re-skin is a handful of edits.
+   ========================================================================== */
+
+:root {
+  --bg:            #191919;
+  --panel:         #222222;
+  --panel-raised:  #2b2b2b;
+  --border:        #666666;
+  --border-soft:   #3a3a3a;
+  --text:          #f3f3f3;
+  --text-dim:      #8a8a8a;
+  --accent:        #8a420d;   /* brown/orange fill */
+  --accent-bright: #d98032;   /* readable accent for text on dark */
+  --key:           #4a4a4a;
+  --key-active:    #5e5e5e;
+  --danger:        #b3453a;
+
+  --tile-size: clamp(52px, 17vw, 72px);
+  --tile-gap: clamp(6px, 1.8vw, 10px);
+  --radius: 6px;
+  --maxw: 640px;
+
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  /* Prefer the system UI stack: no webfont download, native feel on iOS. */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+               Arial, "Helvetica Neue", sans-serif;
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+button { font: inherit; color: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, -150%);
+  z-index: 100;
+  background: var(--panel-raised);
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: 0 0 var(--radius) var(--radius);
+  text-decoration: none;
+}
+.skip-link:focus { transform: translate(-50%, 0); }
+
+/* --------------------------------------------------------------------------
+   Layout shell — header / board / keyboard / footer in one full-height column
+   -------------------------------------------------------------------------- */
+
+/* A fixed-height column: the header, keyboard and footer keep their size and
+   the board absorbs whatever is left (scrolling inside itself once the ladder
+   is taller than the gap). Without a *fixed* height the board would grow the
+   page and push the keyboard below the fold on short phones. */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: calc(var(--safe-top) + 10px) 12px calc(var(--safe-bottom) + 8px);
+  gap: 8px;
+  overflow-y: auto;   /* last-resort escape hatch on extremely short viewports */
+}
+
+/* ---------------------------------- header ------------------------------- */
+
+.header {
+  text-align: center;
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 10px;
+  flex: 0 0 auto;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(26px, 8vw, 34px);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-indent: 0.18em; /* balance the trailing letter-spacing */
+}
+
+.tagline {
+  margin: 2px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  text-transform: lowercase;
+}
+
+.meta {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--text-dim);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+.meta strong { color: var(--text); font-weight: 700; letter-spacing: 0.06em; }
+.meta__goal { color: var(--accent-bright); }
+.meta__sep { color: var(--border-soft); }
+
+/* ---------------------------------- board -------------------------------- */
+
+.main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Short ladders sit centred in the gap; long ones scroll inside .board
+     instead of pushing the keyboard off the screen. */
+  justify-content: center;
+  position: relative;
+  min-height: 0;
+  padding-top: 6px;
+}
+
+.board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--tile-gap);
+  width: 100%;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 0;
+  scrollbar-width: thin;
+}
+.board:focus { outline: none; }
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(4, var(--tile-size));
+  gap: var(--tile-gap);
+  flex: 0 0 auto;
+}
+
+.tile {
+  width: var(--tile-size);
+  height: var(--tile-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--border-soft);
+  border-radius: var(--radius);
+  background: transparent;
+  font-size: calc(var(--tile-size) * 0.5);
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  user-select: none;
+  transition: border-color 120ms ease, background-color 160ms ease,
+              color 160ms ease, transform 120ms ease;
+}
+
+/* A word already committed to the ladder */
+.row--done .tile { border-color: var(--border); }
+
+/* The tile whose letter changed from the previous word */
+.tile--changed {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: #ffe9d6;
+}
+
+/* The starting word sits a little quieter than the player's own moves */
+.row--start .tile { border-color: var(--border-soft); color: var(--text-dim); }
+
+/* The winning target row */
+.row--target .tile {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff6ee;
+}
+
+/* Active (editable) row */
+.row--active .tile { border-color: var(--border-soft); }
+.row--active .tile--filled { border-color: var(--border); }
+.row--active .tile--cursor {
+  border-color: var(--accent-bright);
+  box-shadow: inset 0 0 0 1px var(--accent-bright);
+}
+
+/* Animations ------------------------------------------------------------- */
+
+.tile--pop { animation: pop 140ms ease-out; }
+@keyframes pop {
+  0%   { transform: scale(0.86); }
+  70%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+.row--commit .tile { animation: commit 260ms ease-out backwards; }
+.row--commit .tile:nth-child(2) { animation-delay: 40ms; }
+.row--commit .tile:nth-child(3) { animation-delay: 80ms; }
+.row--commit .tile:nth-child(4) { animation-delay: 120ms; }
+@keyframes commit {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.row--shake { animation: shake 380ms ease-in-out; }
+@keyframes shake {
+  10%, 90% { transform: translateX(-3px); }
+  20%, 80% { transform: translateX(5px); }
+  30%, 50%, 70% { transform: translateX(-7px); }
+  40%, 60% { transform: translateX(7px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Toast ------------------------------------------------------------------ */
+
+.toast {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translate(-50%, -6px);
+  z-index: 20;
+  background: var(--text);
+  color: #101010;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 9px 16px;
+  border-radius: var(--radius);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms ease;
+  max-width: 90%;
+  text-align: center;
+}
+.toast--show { opacity: 1; transform: translate(-50%, 0); }
+
+.board-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-align: center;
+  flex: 0 0 auto;
+}
+
+/* --------------------------------- keyboard ------------------------------ */
+
+.keyboard {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin: 0 auto;
+  padding-top: 6px;
+  touch-action: manipulation;
+}
+
+.kb-row {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+}
+
+.key {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: clamp(46px, 12vw, 58px);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--key);
+  color: var(--text);
+  font-size: clamp(13px, 4vw, 17px);
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;   /* kills the 300ms double-tap zoom */
+  transition: background-color 100ms ease, transform 60ms ease;
+}
+.key:active, .key.key--pressed { background: var(--key-active); transform: translateY(1px); }
+@media (hover: hover) {
+  .key:hover { background: var(--key-active); }
+}
+.key--wide { flex: 1.6 1 auto; font-size: clamp(11px, 3.2vw, 13px); letter-spacing: 0.04em; }
+.kb-row--spacer { padding: 0 5%; }   /* indents the middle A–L row */
+
+/* ---------------------------------- footer ------------------------------- */
+
+.footer {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+  margin-top: 4px;
+}
+
+.footer__btn {
+  background: none;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  padding: 7px 13px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+.footer__btn:hover { color: var(--text); border-color: var(--border); }
+
+/* --------------------------------- modals -------------------------------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(10, 10, 10, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(12px, var(--safe-top)) 12px max(12px, var(--safe-bottom));
+  overflow-y: auto;
+  animation: fade 120ms ease-out;
+}
+.overlay[hidden] { display: none; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 26px 22px 22px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  animation: rise 160ms ease-out;
+}
+.modal[hidden] { display: none; }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+.modal p { line-height: 1.5; font-size: 15px; }
+.modal__title { margin: 0 0 12px; font-size: 22px; font-weight: 800; }
+.modal__lead { margin-top: 0; font-size: 16px; }
+.modal__label {
+  margin: 20px 0 8px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.modal__caption { font-size: 13px; color: var(--text-dim); margin: 10px 0 18px; text-align: center; }
+.modal__note { font-size: 12px; color: var(--text-dim); margin: 10px 0 0; text-align: center; }
+
+.modal__close {
+  position: absolute;
+  top: 8px; right: 10px;
+  background: none;
+  border: 0;
+  color: var(--text-dim);
+  font-size: 28px;
+  line-height: 1;
+  width: 40px; height: 40px;
+  cursor: pointer;
+  border-radius: var(--radius);
+  touch-action: manipulation;
+}
+.modal__close:hover { color: var(--text); }
+
+.modal__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  flex: 1 1 140px;
+  padding: 13px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.btn:hover { background: var(--panel-raised); }
+.btn--primary { background: var(--accent); border-color: var(--accent); color: #fff6ee; }
+.btn--primary:hover { background: #a24f10; }
+
+.accent-text { color: var(--accent-bright); }
+
+/* Example rows inside the how-to-play modal */
+.example {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  --tile-size: 54px;
+}
+.row--static .tile { border-color: var(--border); }
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.checkbox input { width: 17px; height: 17px; accent-color: var(--accent); flex: 0 0 auto; }
+
+/* Results ---------------------------------------------------------------- */
+
+.score {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.score__cell {
+  flex: 1;
+  background: var(--panel-raised);
+  border-radius: var(--radius);
+  padding: 12px 8px;
+  text-align: center;
+}
+.score__value { font-size: 26px; font-weight: 800; line-height: 1.1; }
+.score__label {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+.score__cell--good .score__value { color: var(--accent-bright); }
+
+.ladder {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 4px;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.ladder__word { background: var(--panel-raised); border-radius: 4px; padding: 5px 8px; }
+.ladder__word--target { background: var(--accent); color: #fff6ee; }
+.ladder__arrow { color: var(--text-dim); font-weight: 400; }
+
+/* Stats ------------------------------------------------------------------ */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 6px;
+}
+.stat { text-align: center; padding: 8px 2px; }
+.stat__value { font-size: clamp(19px, 6vw, 24px); font-weight: 800; line-height: 1.1; }
+/* Word-shaped values ("Perfect") need to be smaller than the numeric ones. */
+.stat__value--word { font-size: clamp(13px, 4vw, 16px); padding-top: 5px; }
+.stat__label {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
+}
+
+.dist { display: flex; flex-direction: column; gap: 5px; }
+.dist__row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.dist__key { width: 30px; text-align: right; color: var(--text-dim); flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.dist__bar {
+  background: var(--key);
+  border-radius: 3px;
+  padding: 2px 7px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+  min-width: 26px;
+  transition: width 200ms ease;
+}
+.dist__bar--current { background: var(--accent); color: #fff6ee; }
+.dist__empty { color: var(--text-dim); font-size: 13px; }
+
+/* Yesterday -------------------------------------------------------------- */
+
+.kv { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border-soft); font-size: 15px; }
+.kv:last-of-type { border-bottom: 0; }
+.kv__k { color: var(--text-dim); }
+.kv__v { font-weight: 700; letter-spacing: 0.06em; }
+
+/* Debug banner ----------------------------------------------------------- */
+
+.debug-bar {
+  background: #3a2a12;
+  border: 1px dashed var(--accent);
+  color: #f0c99a;
+  font-size: 12px;
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  margin-top: 8px;
+  text-align: center;
+}
+
+/* Short viewports: shrink the chrome so the board keeps its room. */
+@media (max-height: 700px) {
+  .tagline { display: none; }
+  .board-hint { display: none; }
+  :root { --tile-size: clamp(46px, 15vw, 62px); }
+}
+
+/* Wide screens: the column stays narrow, the tiles get a little bigger. */
+@media (min-width: 560px) {
+  :root { --tile-size: 72px; }
+  .app { padding-left: 20px; padding-right: 20px; }
+}
+
+</style>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐟</text></svg>">
+</head>
+<body>
+
+<a class="skip-link" href="#board">Skip to the game board</a>
+
+<div class="app">
+
+  <header class="header">
+    <h1 class="title" id="game-title">FISH LADDER</h1>
+    <p class="tagline">a daily word ladder</p>
+    <p class="meta">
+      <span class="meta__item" id="puzzle-number">#—</span>
+      <span class="meta__sep" aria-hidden="true">·</span>
+      <span class="meta__item">Start <strong id="start-word">————</strong></span>
+      <span class="meta__sep" aria-hidden="true">·</span>
+      <span class="meta__item">Goal <strong class="meta__goal" id="target-word">FISH</strong></span>
+    </p>
+  </header>
+
+  <main class="main">
+    <!-- Toast messages (invalid guesses, etc.) -->
+    <div class="toast" id="toast" role="alert"></div>
+
+    <div class="board" id="board" tabindex="-1" aria-label="Word ladder"></div>
+
+    <!-- Screen-reader running commentary for board changes -->
+    <p class="sr-only" id="board-status" role="status" aria-live="polite"></p>
+
+    <p class="board-hint" id="board-hint">Change exactly one letter per move.</p>
+  </main>
+
+  <section class="keyboard" id="keyboard" aria-label="On-screen keyboard"></section>
+
+  <footer class="footer">
+    <button type="button" class="footer__btn" id="btn-yesterday">Yesterday</button>
+    <button type="button" class="footer__btn" id="btn-stats">Stats</button>
+    <button type="button" class="footer__btn" id="btn-help">How to play</button>
+  </footer>
+
+</div>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Modals                                                              -->
+<!-- ------------------------------------------------------------------ -->
+<div class="overlay" id="overlay" hidden>
+
+  <!-- How to play -->
+  <div class="modal" id="modal-help" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
+    <button type="button" class="modal__close" data-close aria-label="Close how to play">&times;</button>
+    <h2 class="modal__title" id="help-title">How to Play</h2>
+
+    <p class="modal__lead">Get to <strong class="accent-text">FISH</strong> in as few steps as possible.</p>
+    <p>Each word must be exactly <strong>one letter</strong> different from the last, and must be a real
+      four-letter word.</p>
+
+    <p class="modal__label">Example</p>
+    <div class="example">
+      <div class="row row--static" aria-label="B A R N">
+        <div class="tile">B</div><div class="tile">A</div><div class="tile">R</div><div class="tile">N</div>
+      </div>
+      <div class="row row--static" aria-label="B O R N, the second letter changed from A to O">
+        <div class="tile">B</div><div class="tile tile--changed">O</div><div class="tile">R</div><div class="tile">N</div>
+      </div>
+    </div>
+    <p class="modal__caption">Only the second letter changed: <strong>A</strong> &rarr;
+      <strong class="accent-text">O</strong>.</p>
+
+    <p>A new starting word is chosen daily. Can you find the shortest path?</p>
+
+    <div class="modal__actions">
+      <button type="button" class="btn btn--primary" data-close>Got it</button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="modal" id="modal-results" role="dialog" aria-modal="true" aria-labelledby="results-title" hidden>
+    <button type="button" class="modal__close" data-close aria-label="Close results">&times;</button>
+    <h2 class="modal__title" id="results-title">You got to FISH!</h2>
+    <p class="modal__lead" id="results-subtitle"></p>
+
+    <div class="score" id="results-score"></div>
+
+    <p class="modal__label">Your ladder</p>
+    <div class="ladder" id="results-ladder"></div>
+
+    <label class="checkbox">
+      <input type="checkbox" id="share-include-ladder">
+      <span>Include the words in my share text (spoilers!)</span>
+    </label>
+
+    <div class="modal__actions">
+      <button type="button" class="btn btn--primary" id="btn-share">Share result</button>
+      <button type="button" class="btn" id="btn-replay">Play again (practice)</button>
+    </div>
+    <p class="modal__note">Practice replays never change your stats.</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="modal" id="modal-stats" role="dialog" aria-modal="true" aria-labelledby="stats-title" hidden>
+    <button type="button" class="modal__close" data-close aria-label="Close statistics">&times;</button>
+    <h2 class="modal__title" id="stats-title">Statistics</h2>
+    <div class="stats-grid" id="stats-grid"></div>
+    <p class="modal__label">Moves per completed puzzle</p>
+    <div class="dist" id="stats-dist"></div>
+    <div class="modal__actions">
+      <button type="button" class="btn" data-close>Close</button>
+    </div>
+  </div>
+
+  <!-- Yesterday -->
+  <div class="modal" id="modal-yesterday" role="dialog" aria-modal="true" aria-labelledby="yesterday-title" hidden>
+    <button type="button" class="modal__close" data-close aria-label="Close yesterday's answer">&times;</button>
+    <h2 class="modal__title" id="yesterday-title">Yesterday's puzzle</h2>
+    <div id="yesterday-body"></div>
+    <div class="modal__actions">
+      <button type="button" class="btn" data-close>Close</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/**
+ * words.js — bundled game data.
+ *
+ * WORD_LIST: 2149 common four-letter English words, stored as space-separated
+ * chunks (small download, trivial to diff) and expanded into a Set at load time.
+ * Sources: the ENABLE open word list intersected with an OpenSubtitles frequency
+ * list, filtered for profanity, slurs, proper nouns and non-English entries.
+ *
+ * START_WORDS: 400 curated daily starting words. Every one of them is
+ * guaranteed (by breadth-first search over WORD_LIST) to have a path to
+ * FISH, and to be at least 3 moves away so the puzzle is never trivial.
+ *
+ * Both lists are lowercase; the UI uppercases for display.
+ */
+
+const WORD_LIST_CHUNKS = [
+  "abed able abut aced aces ache acid acme acne acre acts adds afar aged ages ahem ahoy aide aids",
+  "ails aims airs airy ajar akin alan alas alec ales ally alma alms aloe alps also alto alum amen",
+  "amid ammo amok amps ands anew anna anon ante anti ants apes apex aqua arch area ares aria arid",
+  "arms army arts arty asks atom atop auld aunt aura auto avid away awed awol awry axed axel axes",
+  "axis axle baba babe babu baby bach back bags bail bait bake bald bale balk ball balm band bane",
+  "bang bank bans barb bard bare barf bark barn bars base bash bask bass bath bats bawl bays bead",
+  "beak beam bean bear beat beau beck beds beef been beep beer bees beet begs bell belt bend bent",
+  "berg berm best beta beth bets bevy bias bide bids biff bike bile bill bind bins bios bird bite",
+  "bits blab blah bled blew blip blob blot blow blue blur boar boat bobs bock bode body bogs boil",
+  "bold bolt bomb bond bone bong bonk bony book boom boon boor boos boot bore born bosh boss both",
+  "bots bout bowl bows boyo boys bozo brad brag bran bras brat bray bred bree brew brig brim bros",
+  "brow brrr bubs buck buds buff bugs bulb bulk bull bump bums bunk buns bunt buoy burg burn burp",
+  "burr bury bush bust busy buts buys buzz byes cabs cafe caff cage cain cake calf call calm came",
+  "camp cams cane cans cant cape caps carb card care carl carp carr cars cart casa case cash cask",
+  "cast cate cats cave caws cell cent chad chap char chat chef chew chez chic chin chip chit chop",
+  "chow chub chug chum ciao cite city clad clam clan clap claw clay clef clip clod clog clop clot",
+  "club clue coal coat coax cobb coco code coed cogs coil coin coke cola cold cole colt coma comb",
+  "come comp cone conk cons cook cool coop coos coot cope cops copy cord core cork corn cory cost",
+  "cosy cots coup cove cowl cows cozy crab cram craw crew crib croc crop crow crud crux cube cubs",
+  "cued cues cuff cull cult cups curb curd cure curl curt cusp cuss cute cuts cyst czar dads daft",
+  "dais dale dame damp dams dang dank dare dark darn dart dash data date davy dawn days daze dead",
+  "deaf deal dean dear debs debt deck deed deem deep deer deft defy deli dell demo dens dent deny",
+  "desk dewy dial dibs dice died dies diet digs dike dill dime dine ding dink dips dire dirk dirt",
+  "disc dish disk diss ditz diva dive dock docs dodo doer does dogs dojo dole doll dolt dome done",
+  "dong dons doom door dope dork dorm dory dose doss dost dote doth dots dour dove down doze dozy",
+  "drab drag dram drat draw drew drip drop drug drum dual duck duct dude duds duel dues duet duff",
+  "duke dull duly dumb dump dune dung dunk dupe dusk dust duty dyed dyer dyes each earl earn ears",
+  "ease east easy eats echo eddy edge edgy edit eels eggs egos elks elms else emit ends envy eons",
+  "epic eras ergo euro even ever eves evil exam exec exes exit expo eyed eyes face fact fade fads",
+  "fags fail fain fair fake fall fame fang fans fare farm faro fast fate fats faun faux fave fawn",
+  "faze fear feat feds feed feel fees feet fell felt fend fern feta fete feud fief fife figs file",
+  "fill film find fine fink fins fire firm firs fish fist fits five fizz flag flak flan flap flat",
+  "flaw flax flay flea fled flee flew flex flip flit floe flog flop flow flue flux foal foam foes",
+  "foil fold folk fond font food fool foot ford fore fork form fort foul four fowl foxy frat fray",
+  "free fret frig frog from fuel fuji full fund funk furs fury fuse fuss fuzz gaby gaff gaga gage",
+  "gags gain gait gala gale gall gals game gams gang gaps garb gash gasp gate gave gawk gays gaze",
+  "gear geek geez gels gems gene gent germ gets ghee gift gigs gill gilt girl gist give glad glee",
+  "glen glib glop glow glue glug glum gnat gnaw goad goal goat gobs gods goes gold golf gone gong",
+  "good goof goon goop gore gory gosh gout gown grab grad gram gran gray grew grey grid grim grin",
+  "grip grit grog grow grub guff gulf gull gulp gums gunk guns guru gush gust guts guys gyms gyro",
+  "hack hags haha hail hair hale half hall halo halt hams hand hang hank haps hard hare hark harm",
+  "harp hart hash hast hate hath hats haul have hawk hays haze hazy head heal heap hear heat heck",
+  "heed heel heft heil heir held helm help hemp hens herb herd here hero hers hick hide high hike",
+  "hill hilt hind hint hips hire hiss hits hive hoax hobo hock hogs hold hole holm holt holy home",
+  "hone hong honk hood hoof hook hoop hoot hope hops horn hose host hots hour howe howl hows huck",
+  "hues huff huge hugs hula hulk hull hump hums hung hunh hunk hunt hurl hurt hush husk huts hymn",
+  "hype hypo ibis iced icky icon idea idle idly idol iffy ills imam inch info inky inns into ions",
+  "iota iris iron isle itch item jabs jack jade jags jail jake jams jane jars java jaws jazz jean",
+  "jeep jeez jell jerk jess jest jets jews jiff jill jinx jive jobs jock joey john join joke jolt",
+  "josh joys judo juke jump junk jury just kale kane kayo keel keen keep kegs kelp kens kent kept",
+  "kerb kern keys khan kick kids kill kiln kilo kilt kind king kink kins kirk kiss kite kits kiwi",
+  "knee knew knit knob knot know kohl kook kris kudo labs lace lack lacy lads lady laid lain lair",
+  "lake lama lamb lame lamp land lane lang laps lard lark lars lash lass last late lava lawn laws",
+  "lays lazy lead leaf leak lean leap lear lech leek leer lees left legs lend lens lent less lest",
+  "lets levy lewd liar lice lick lids lied lien lier lies lieu life lift like lily lima limb lime",
+  "limo limp line ling link lino lint lion lips lira lire lisp list lite live load loaf loan lobe",
+  "loch lock loco lode loft logo logs lone long look loom loon loop loos loot lope lord lore lose",
+  "loss lost lots loud lout love lowe lows luau lube luck luge lull lulu lump luna lune lung lure",
+  "lurk lush lust lute lynx lyre mace mach mack made mage magi mags maid mail maim main make mako",
+  "male mall malt mama mana mane mans many maps marc mare mark mars mart mash mask mass mast mate",
+  "math mats matt maul maxi maya mayo mays maze mead meal mean meat meek meet meld melt memo mend",
+  "menu meow mere merl mesa mesh mess mete meth mews mica mice mick mike mild mile milk mill milo",
+  "milt mime mina mind mine mini mink mint minx mire miso miss mist mite mitt moan moat mobs mock",
+  "mode mods moil mojo mold mole moll moms monk mono mood moon moor moos moot mope mops mora more",
+  "morn mort moss most mote moth move much muck muff mugs mule mull mums muse mush musk muss must",
+  "mute mutt myth nada nags nail name nana nape naps narc nary nave navy nazi near neat neck need",
+  "neon nerd ness nest nets neve news newt next nice nick nigh nine nips nite nits node nods noel",
+  "noir nome none nook noon nope norm nose nosh nosy note noun nous nova nowt nuke null numb nuns",
+  "nuts oaks oars oath oats obey oboe odds odor offs ogle ogre oils oily oink okay okra olds omen",
+  "omer omit once ones only onto oops ooze opal open opus oral orbs orca orcs otto ouch ours outs",
+  "oval oven over owed owes owls owns oxen pace pack pact pads page paid pail pain pair pale pall",
+  "palm palp pals pane pang pans pant papa para pare park parr part pass past pate path pats pave",
+  "pawn paws pays peak pear peas peat peck peds peed peek peel peep peer pees pegs pelt pens pent",
+  "peon perk perm pert peso pest pets pews pfft phat phew pick pics pied pier pies pigs pike pile",
+  "pill pimp pine ping pink pins pint pipe pips pita pits pity plan play plea pled plop plot plow",
+  "ploy plug plum plus pods poem poet poke pole poll polo poly pomp pond pong pony pooh pool poop",
+  "poor pope pops pore pork port pose posh post pots pour pout pows pram prat pray prep prey prim",
+  "prod prof prom prop pros psst pubs puce puck puff pull pulp puma pump punk puns punt puny pups",
+  "pure puri purr push puss puts putt putz pyre quad quay quid quit quiz race rack racy raff raft",
+  "rage rags raid rail rain rake ramp rams rand rang rank rant raps rare rash rate rats rave rays",
+  "raze read real ream reap rear redo reds reed reef reek reel rein rely rent repo reps rest revs",
+  "ribs rice rich rick ride rife riff rift rigs rile rims rind ring rink riot ripe rips rise risk",
+  "rite ritz road roam roan roar robe robs rock rode rods role rolf roll romp roof rook room root",
+  "rope rose rosy rota rots rout roux rove rows rube rubs ruby rudd rude ruff rugs ruin rule rump",
+  "rune rung runs runt ruse rush rusk rust ruth sack safe saga sage said sail sake sale salt same",
+  "sand sane sang sank sans saps sari sash sass saul save saws says scab scag scam scan scar scot",
+  "scow scry scud seal seam sear seas seat sect seed seek seem seen seep seer sees self sell semi",
+  "send sent sera serf sets sewn shad shag shah sham shaw shay shea shed shes shim shin ship shiv",
+  "shoe shoo shop shot show shun shut sick side sift sigh sign silk sill silo silt simp sims sine",
+  "sing sink sins sips sire sirs site sits size skag skid skim skin skip skis skit slab slam slap",
+  "slaw slay sled slew slid slim slip slit slob slog slop slot slow slug slum slur smog smug snag",
+  "snap snip snit snob snog snot snow snub snug soak soap soar sobs sock soda sods sofa soft soil",
+  "sold sole solo soma some song sons sook soon soot sore sort soul soup sour sown sows soya span",
+  "spar spat spec sped spew spin spit spot spry spud spun spur stab stag star stat stay stem step",
+  "stew stir stop stow stub stud stun subs such suds sued sues suit sulk sulu sumo sump sums sung",
+  "sunk suns sure surf suss swab swag swam swan swap swat sway swig swim swum sync tabs tach tack",
+  "taco tact tags tail take tale talk tall tame tang tank tans tape taps tarn taro tarp tart task",
+  "tate tats taut taxi teak teal team tear teas teat teed teen tees tell temp tend tens tent term",
+  "test text than that thaw thee them then they thin this thou thru thud thug thus tick tide tidy",
+  "tied tier ties tiff tile till tilt time tine ting tins tint tiny tips tire titi toad toby toed",
+  "toes tofu toil toke told toll tomb tome toms tone tong tons tony took tool toon toot tops tore",
+  "torn toro tory toss tote tots tour tout town toys tram trap tray tree trek trey trig trim trio",
+  "trip trod trot troy true tuba tube tubs tuck tuff tugs tuna tune tung turf turk turn tush tusk",
+  "tutu twas twig twin twit twos tyke type typo tyre ugly ulna undo unit unto upon urge urns ursa",
+  "used user uses vain vale vamp vane vans vary vase vast vats veal veer veil vein vent vera verb",
+  "very vest veto vets vial vibe vice view vile vine vino visa vise vita viva void vole volt vote",
+  "vows wack wade wadi wage wags waif wail wait wake walk wall wand want ward ware warm warn warp",
+  "wars wart wary wash wasp wast watt wave wavy waxy ways weak wean wear webs weds weed week weep",
+  "weir weld well welt went wept were west wets wham what whee when whet whew whey whim whip whir",
+  "whit whiz whoa whom whys wick wide wife wigs wild wile will wilt wily wimp wind wine wing wink",
+  "wino wins wipe wire wise wish wisp with wits woes woke wolf womb wont wood woof wool word wore",
+  "work worm worn wort wrap wren writ yaks yams yang yank yard yarn yawn yeah year yell yelp yeti",
+  "yoga yoke yolk yore your yuan yuck yule yurt zany zaps zeal zero zest zinc zing zips zits zone",
+  "zoom zoos",
+];
+
+const START_WORD_CHUNKS = [
+  "arms army aunt babe baby back bags bail ball band bang bank bars bath bear beat beef beep beer",
+  "bell belt best bike bill bird bite blew blow boat body bond bone book boom born boss bowl boys",
+  "buck bull burn busy cage cake call calm came camp card care cars cash cast cats cave cell chat",
+  "chip city coat code cold cook cool cops copy cost cure cute dare dark data date dawn days deal",
+  "dear deck deep deny desk dogs doll done door down drag draw drop duck dude dump dust duty earn",
+  "ears ease east easy eyes face fail fair fake fall fans farm fate feed feel feet fell felt file",
+  "fill film find fire firm five flag flat flew flow food fool foot four free fuel full gain game",
+  "gate gave gear gift girl give glad goal gods gold golf gone good grab gray grow guys hail hair",
+  "hall hand hang hard head hear heat held help hero hide hill hire hold hole holy home hood hook",
+  "hope horn host hour huge hung hunt jobs join joke jump jury keep kept keys kick kids king kiss",
+  "lack lady laid lake land last late lead left legs lend life lift line link lion lips live load",
+  "loan lock long look lose lost lots loud love luck made maid mail make male mask mass mate math",
+  "meal meat meet mile milk mind mine miss mood moon move nail name near neck need news next nine",
+  "noon nose note nuts odds over owns pack page paid pair park part pass path pays pick pigs pink",
+  "pipe pity play pool poor port post pour pray pull pure push race rain rare rate read rent rest",
+  "rice rich ride ring rise risk road rock roll roof room rope rule rush safe sake sale salt sand",
+  "save seal seat seek seen sell send sent sets shed ship shoe shop show shut side sing sink site",
+  "size skip slip slow snow soft sold song sons soon soul soup spin spit spot star stay step stop",
+  "suit swim tail talk tall tank tape task taxi team tear tell test text thin tied time tiny told",
+  "tone took tour town trap trip tune turn vice vote wait wake walk wall warm warn wave wear week",
+  "went west wide wife wild wind wine wing wipe wire woke wolf wood word wore work yard year zero",
+  "zone",
+];
+
+const WORD_LIST = WORD_LIST_CHUNKS.join(" ").split(" ");
+const START_WORDS = START_WORD_CHUNKS.join(" ").split(" ");
+
+/* Exported for the Node test harness; in the browser the consts above are
+   ordinary script-scope globals that script.js reads directly. */
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { WORD_LIST: WORD_LIST, START_WORDS: START_WORDS };
+}
+
+/* =============================================================================
+ * FISH LADDER — a daily word ladder
+ *
+ * Change one letter at a time, every step a real four-letter word, and get to
+ * FISH in as few moves as possible.
+ *
+ * Everything below is plain ES2017 — no build step, no framework. Load order is
+ * words.js (data) then this file.
+ *
+ * Layout of this file:
+ *   1.  CONFIG            — the knobs you are most likely to want
+ *   2.  Dictionary        — Set lookup + one-letter-apart graph + BFS
+ *   3.  Daily puzzle      — deterministic date → puzzle number → start word
+ *   4.  Persistence       — localStorage for progress, stats, tutorial flag
+ *   5.  Statistics
+ *   6.  Game state + rules
+ *   7.  Rendering         — board, keyboard, modals, toast
+ *   8.  Input
+ *   9.  Modals + sharing
+ *   10. Debug API + bootstrap
+ * ========================================================================== */
+
+/* -----------------------------------------------------------------------------
+ * 1. CONFIG
+ * -------------------------------------------------------------------------- */
+
+const CONFIG = {
+  gameName: "FISH LADDER",     // shown in the header and in share text
+  targetWord: "FISH",          // the word every ladder must reach
+  epoch: "2025-08-15",         // puzzle #1 was played on this calendar date
+  debug: false,                // true → log the optimal path, show the debug bar
+  forcePuzzleNumber: null,     // e.g. 362 to pin a specific puzzle
+  forceStartWord: null,        // e.g. "SWIM" to pin a specific start word
+  forceDate: null              // e.g. "2026-01-01" to pretend it is another day
+};
+
+const STORAGE_KEYS = {
+  progress: "fishladder.progress.v1",
+  stats: "fishladder.stats.v1",
+  tutorial: "fishladder.tutorial.v1"
+};
+
+const MESSAGES = {
+  length: "Enter 4 letters",
+  unknown: "Not a valid word",
+  transition: "Change exactly one letter",
+  duplicate: "Already used"
+};
+
+/* -----------------------------------------------------------------------------
+ * 2. Dictionary and word graph
+ * -------------------------------------------------------------------------- */
+
+// words.js defines WORD_LIST / START_WORDS as globals in the browser; under Node
+// (used by test.js) it exports them instead.
+const DATA = (typeof module !== "undefined" && module.exports)
+  ? require("./words.js")
+  : { WORD_LIST: WORD_LIST, START_WORDS: START_WORDS };
+
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+/** Every playable word, uppercase, in a Set for O(1) membership tests. */
+const DICTIONARY = new Set(DATA.WORD_LIST.map(function (w) { return w.toUpperCase(); }));
+
+/** Curated daily starting words (all verified to have a path to the target). */
+const START_LIST = DATA.START_WORDS.map(function (w) { return w.toUpperCase(); });
+
+function isValidWord(word) {
+  return DICTIONARY.has(String(word).toUpperCase());
+}
+
+/** Number of positions at which two equal-length words differ. */
+function diffCount(a, b) {
+  if (a.length !== b.length) return -1;
+  var n = 0;
+  for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) n++;
+  return n;
+}
+
+/** Index of the single changed letter, or -1 if not exactly one changed. */
+function changedIndex(a, b) {
+  if (!a || !b || a.length !== b.length) return -1;
+  var found = -1;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) {
+      if (found !== -1) return -1;
+      found = i;
+    }
+  }
+  return found;
+}
+
+/** A legal move is a real word exactly one letter away from the previous one. */
+function isValidTransition(previous, next) {
+  return diffCount(String(previous).toUpperCase(), String(next).toUpperCase()) === 1;
+}
+
+/** All dictionary words one letter away from `word`. */
+function neighbours(word) {
+  var out = [];
+  for (var i = 0; i < word.length; i++) {
+    for (var c = 0; c < ALPHABET.length; c++) {
+      var letter = ALPHABET[c];
+      if (letter === word[i]) continue;
+      var candidate = word.slice(0, i) + letter + word.slice(i + 1);
+      if (DICTIONARY.has(candidate)) out.push(candidate);
+    }
+  }
+  return out;
+}
+
+/**
+ * Breadth-first search for a shortest ladder from `start` to `target`.
+ * Returns the full path including both endpoints, or null when unreachable.
+ * BFS on an unweighted graph is what makes the result provably optimal.
+ */
+function calculateShortestPath(start, target) {
+  start = String(start).toUpperCase();
+  target = String(target).toUpperCase();
+  if (!DICTIONARY.has(start) || !DICTIONARY.has(target)) return null;
+  if (start === target) return [start];
+
+  var cameFrom = new Map();       // word → the word we reached it from
+  cameFrom.set(start, null);
+  var queue = [start];
+  var head = 0;
+
+  while (head < queue.length) {
+    var word = queue[head++];
+    var next = neighbours(word);
+    for (var i = 0; i < next.length; i++) {
+      var n = next[i];
+      if (cameFrom.has(n)) continue;
+      cameFrom.set(n, word);
+      if (n === target) {
+        var path = [];
+        for (var w = target; w !== null; w = cameFrom.get(w)) path.push(w);
+        return path.reverse();
+      }
+      queue.push(n);
+    }
+  }
+  return null;
+}
+
+/** Minimum number of moves from `start` to the target, or null if unreachable. */
+function optimalMoves(start, target) {
+  var path = calculateShortestPath(start, target || CONFIG.targetWord);
+  return path ? path.length - 1 : null;
+}
+
+/* -----------------------------------------------------------------------------
+ * 3. Daily puzzle
+ * -------------------------------------------------------------------------- */
+
+/** Whole calendar days between the epoch and `date`, in the player's timezone. */
+function daysSinceEpoch(date) {
+  var parts = CONFIG.epoch.split("-").map(Number);
+  var epochUTC = Date.UTC(parts[0], parts[1] - 1, parts[2]);
+  var dayUTC = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  return Math.round((dayUTC - epochUTC) / 86400000);
+}
+
+function gcd(a, b) { while (b) { var t = b; b = a % b; a = t; } return a; }
+
+/**
+ * Map a puzzle number onto a start word.
+ *
+ * `n * stride % length` with stride coprime to the list length walks the whole
+ * list before repeating, so every word is used once per full cycle and
+ * consecutive days are never neighbours in the list.
+ */
+function startWordFor(puzzleNumber) {
+  var len = START_LIST.length;
+  var strides = [137, 131, 127, 113, 109, 103, 101, 97, 89, 83, 79, 73, 71, 67,
+                 61, 59, 53, 47, 43, 41, 37, 31, 29, 23, 19, 17, 13, 11, 7, 3, 1];
+  var stride = strides.find(function (s) { return gcd(s, len) === 1; }) || 1;
+  var index = ((puzzleNumber * stride) + 61) % len;
+  return START_LIST[index];
+}
+
+/** Today's (or a forced/mocked) puzzle: number, start word, target. */
+function getDailyPuzzle(date) {
+  var when = date || (CONFIG.forceDate ? parseLocalDate(CONFIG.forceDate) : new Date());
+  var number = CONFIG.forcePuzzleNumber !== null
+    ? CONFIG.forcePuzzleNumber
+    : Math.max(1, daysSinceEpoch(when) + 1);
+  var start = CONFIG.forceStartWord
+    ? CONFIG.forceStartWord.toUpperCase()
+    : startWordFor(number);
+  return { number: number, startWord: start, target: CONFIG.targetWord };
+}
+
+/** "2026-01-01" → a Date at local midnight (avoids the UTC-parsing surprise). */
+function parseLocalDate(iso) {
+  var p = String(iso).split("-").map(Number);
+  return new Date(p[0], (p[1] || 1) - 1, p[2] || 1);
+}
+
+/* -----------------------------------------------------------------------------
+ * 4. Persistence
+ * -------------------------------------------------------------------------- */
+
+function storage() {
+  try {
+    if (typeof localStorage === "undefined") return null;
+    localStorage.setItem("__ladder_probe", "1");
+    localStorage.removeItem("__ladder_probe");
+    return localStorage;
+  } catch (err) {
+    return null;   // private mode / storage disabled — the game still runs
+  }
+}
+
+function readJSON(key, fallback) {
+  var store = storage();
+  if (!store) return fallback;
+  try {
+    var raw = store.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (err) {
+    return fallback;
+  }
+}
+
+function writeJSON(key, value) {
+  var store = storage();
+  if (!store) return;
+  try { store.setItem(key, JSON.stringify(value)); } catch (err) { /* quota */ }
+}
+
+/**
+ * Load saved progress for a puzzle number. Anything belonging to a different
+ * puzzle (i.e. a new calendar day) is discarded and a fresh ladder is started.
+ */
+function loadState(puzzle) {
+  var saved = readJSON(STORAGE_KEYS.progress, null);
+  if (saved && saved.puzzleNumber === puzzle.number && Array.isArray(saved.ladder) &&
+      saved.ladder.length && saved.ladder[0] === puzzle.startWord) {
+    return {
+      puzzleNumber: puzzle.number,
+      startWord: puzzle.startWord,
+      ladder: saved.ladder.slice(),
+      completed: !!saved.completed,
+      scored: !!saved.scored,
+      current: ""
+    };
+  }
+  return {
+    puzzleNumber: puzzle.number,
+    startWord: puzzle.startWord,
+    ladder: [puzzle.startWord],
+    completed: false,
+    scored: false,
+    current: ""
+  };
+}
+
+function saveState(state) {
+  writeJSON(STORAGE_KEYS.progress, {
+    puzzleNumber: state.puzzleNumber,
+    startWord: state.startWord,
+    ladder: state.ladder,
+    completed: state.completed,
+    scored: state.scored,
+    savedAt: new Date().toISOString()
+  });
+}
+
+/* -----------------------------------------------------------------------------
+ * 5. Statistics
+ * -------------------------------------------------------------------------- */
+
+function defaultStats() {
+  return {
+    version: 1,
+    played: 0,             // puzzles the player made at least one move on
+    completed: 0,          // puzzles finished
+    currentStreak: 0,
+    maxStreak: 0,
+    totalMoves: 0,         // for the average
+    totalOverOptimal: 0,
+    perfect: 0,            // completions that matched the optimal length
+    bestOverOptimal: null, // best (lowest) "moves over optimal" ever
+    distribution: {},      // move count → number of completions
+    lastPlayedPuzzle: null,
+    lastCompletedPuzzle: null
+  };
+}
+
+function loadStats() {
+  var s = readJSON(STORAGE_KEYS.stats, null);
+  if (!s || s.version !== 1) return defaultStats();
+  var base = defaultStats();
+  Object.keys(base).forEach(function (k) { if (!(k in s)) s[k] = base[k]; });
+  return s;
+}
+
+function saveStats(stats) { writeJSON(STORAGE_KEYS.stats, stats); }
+
+/** Count a puzzle as "played" the first time the player commits a word to it. */
+function markPlayed(stats, puzzleNumber) {
+  if (stats.lastPlayedPuzzle === puzzleNumber) return stats;
+  stats.played += 1;
+  stats.lastPlayedPuzzle = puzzleNumber;
+  saveStats(stats);
+  return stats;
+}
+
+/**
+ * Record a completed puzzle. Called once per puzzle number — practice replays
+ * pass through `state.scored` and never reach here a second time.
+ */
+function updateStats(stats, puzzleNumber, moves, optimal) {
+  stats.completed += 1;
+  stats.totalMoves += moves;
+  stats.distribution[moves] = (stats.distribution[moves] || 0) + 1;
+
+  if (typeof optimal === "number") {
+    var over = moves - optimal;
+    stats.totalOverOptimal += over;
+    if (over === 0) stats.perfect += 1;
+    if (stats.bestOverOptimal === null || over < stats.bestOverOptimal) {
+      stats.bestOverOptimal = over;
+    }
+  }
+
+  stats.currentStreak = (stats.lastCompletedPuzzle === puzzleNumber - 1)
+    ? stats.currentStreak + 1
+    : 1;
+  stats.maxStreak = Math.max(stats.maxStreak, stats.currentStreak);
+  stats.lastCompletedPuzzle = puzzleNumber;
+
+  saveStats(stats);
+  return stats;
+}
+
+/* -----------------------------------------------------------------------------
+ * 6. Game state and rules
+ * -------------------------------------------------------------------------- */
+
+var game = {
+  puzzle: null,
+  state: null,
+  stats: null,
+  optimal: null,      // minimum moves for today (computed lazily, cached)
+  optimalPath: null
+};
+
+function movesMade(state) { return state.ladder.length - 1; }
+
+function ensureOptimal() {
+  if (game.optimalPath === null) {
+    game.optimalPath = calculateShortestPath(game.puzzle.startWord, CONFIG.targetWord);
+    game.optimal = game.optimalPath ? game.optimalPath.length - 1 : null;
+  }
+  return game.optimal;
+}
+
+/**
+ * Validate and apply a guess.
+ * Returns { ok: true, word, changed } or { ok: false, reason }.
+ * The reason strings double as the toast copy.
+ */
+function submitGuess(rawGuess) {
+  var state = game.state;
+  var guess = String(rawGuess || "").toUpperCase().replace(/[^A-Z]/g, "");
+
+  if (state.completed) return { ok: false, reason: "Puzzle already solved" };
+  if (guess.length !== 4) return { ok: false, reason: MESSAGES.length };
+  if (!isValidWord(guess)) return { ok: false, reason: MESSAGES.unknown };
+
+  var previous = state.ladder[state.ladder.length - 1];
+  if (!isValidTransition(previous, guess)) return { ok: false, reason: MESSAGES.transition };
+  if (state.ladder.indexOf(guess) !== -1) return { ok: false, reason: MESSAGES.duplicate };
+
+  var changed = changedIndex(previous, guess);
+  state.ladder.push(guess);
+  state.current = "";
+
+  if (guess === CONFIG.targetWord) state.completed = true;
+
+  return { ok: true, word: guess, changed: changed, won: state.completed };
+}
+
+/* -----------------------------------------------------------------------------
+ * 7. Rendering
+ * -------------------------------------------------------------------------- */
+
+var el = {};          // cached DOM nodes, filled in by init()
+var toastTimer = null;
+
+function cacheDom() {
+  [
+    "board", "board-status", "board-hint", "toast", "keyboard", "overlay",
+    "puzzle-number", "start-word", "target-word", "game-title",
+    "modal-help", "modal-results", "modal-stats", "modal-yesterday",
+    "results-title", "results-subtitle", "results-score", "results-ladder",
+    "share-include-ladder", "btn-share", "btn-replay",
+    "stats-grid", "stats-dist", "yesterday-body",
+    "btn-help", "btn-stats", "btn-yesterday"
+  ].forEach(function (id) {
+    el[id] = document.getElementById(id);
+  });
+}
+
+/** Build one row of four tiles. */
+function makeRow(word, opts) {
+  opts = opts || {};
+  var row = document.createElement("div");
+  row.className = "row";
+  if (opts.className) row.className += " " + opts.className;
+
+  for (var i = 0; i < 4; i++) {
+    var tile = document.createElement("div");
+    tile.className = "tile";
+    var letter = word[i] || "";
+    tile.textContent = letter;
+    if (opts.active) {
+      if (letter) tile.className += " tile--filled";
+      else if (i === word.length) tile.className += " tile--cursor";
+    }
+    if (opts.changed === i) tile.className += " tile--changed";
+    if (opts.popIndex === i) tile.className += " tile--pop";
+    row.appendChild(tile);
+  }
+  return row;
+}
+
+/** Accessible description of a committed row. */
+function describeRow(word, index, changed) {
+  var spelled = word.split("").join(" ");
+  if (index === 0) return "Starting word: " + spelled;
+  var suffix = changed >= 0 ? ", letter " + (changed + 1) + " changed" : "";
+  return "Move " + index + ": " + spelled + suffix;
+}
+
+function renderBoard(options) {
+  options = options || {};
+  var state = game.state;
+  el.board.textContent = "";
+
+  state.ladder.forEach(function (word, i) {
+    var prev = i > 0 ? state.ladder[i - 1] : null;
+    var changed = prev ? changedIndex(prev, word) : -1;
+    var classes = ["row--done"];
+    if (i === 0) classes.push("row--start");
+    if (word === CONFIG.targetWord) classes.push("row--target");
+    // Only the freshly committed row animates, so re-renders stay quiet.
+    if (options.commitLast && i === state.ladder.length - 1) classes.push("row--commit");
+
+    var row = makeRow(word, { className: classes.join(" "), changed: changed });
+    row.setAttribute("role", "group");
+    row.setAttribute("aria-label", describeRow(word, i, changed));
+    el.board.appendChild(row);
+  });
+
+  if (!state.completed) el.board.appendChild(buildActiveRow());
+
+  // Keep the newest row in view without yanking the whole page around.
+  el.board.scrollTop = el.board.scrollHeight;
+}
+
+function buildActiveRow() {
+  var row = makeRow(game.state.current, { className: "row--active", active: true });
+  row.setAttribute("role", "group");
+  row.setAttribute("aria-label", "Your next word: " +
+    (game.state.current ? game.state.current.split("").join(" ") : "empty"));
+  row.id = "active-row";
+  return row;
+}
+
+/** Cheap redraw for keystrokes — swaps only the editable row. */
+function renderActiveRow(popIndex) {
+  var existing = document.getElementById("active-row");
+  if (!existing) return;
+  var row = makeRow(game.state.current, {
+    className: "row--active", active: true, popIndex: popIndex
+  });
+  row.id = "active-row";
+  row.setAttribute("role", "group");
+  row.setAttribute("aria-label", "Your next word: " +
+    (game.state.current ? game.state.current.split("").join(" ") : "empty"));
+  existing.replaceWith(row);
+  el.board.scrollTop = el.board.scrollHeight;
+}
+
+function announce(message) {
+  if (el["board-status"]) el["board-status"].textContent = message;
+}
+
+function showToast(message) {
+  el.toast.textContent = message;
+  el.toast.classList.add("toast--show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () {
+    el.toast.classList.remove("toast--show");
+  }, 1800);
+}
+
+function shakeActiveRow() {
+  var row = document.getElementById("active-row");
+  if (!row) return;
+  row.classList.remove("row--shake");
+  void row.offsetWidth;           // force reflow so the animation can restart
+  row.classList.add("row--shake");
+}
+
+const KEY_ROWS = [
+  ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+  ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+  ["ENTER", "Z", "X", "C", "V", "B", "N", "M", "BACKSPACE"]
+];
+
+function renderKeyboard() {
+  el.keyboard.textContent = "";
+  KEY_ROWS.forEach(function (keys, rowIndex) {
+    var row = document.createElement("div");
+    row.className = "kb-row" + (rowIndex === 1 ? " kb-row--spacer" : "");
+    keys.forEach(function (key) {
+      var button = document.createElement("button");
+      button.type = "button";
+      button.className = "key" + (key.length > 1 ? " key--wide" : "");
+      button.dataset.key = key;
+      if (key === "BACKSPACE") {
+        button.textContent = "⌫";
+        button.setAttribute("aria-label", "Backspace");
+      } else if (key === "ENTER") {
+        button.textContent = "Enter";
+        button.setAttribute("aria-label", "Submit word");
+      } else {
+        button.textContent = key;
+        button.setAttribute("aria-label", "Letter " + key);
+      }
+      row.appendChild(button);
+    });
+    el.keyboard.appendChild(row);
+  });
+}
+
+function renderHeader() {
+  el["puzzle-number"].textContent = "#" + game.puzzle.number;
+  el["start-word"].textContent = game.puzzle.startWord;
+  el["target-word"].textContent = CONFIG.targetWord;
+  el["game-title"].textContent = CONFIG.gameName;
+  document.title = CONFIG.gameName;
+}
+
+function renderHint() {
+  if (!el["board-hint"]) return;
+  if (game.state.completed) {
+    el["board-hint"].textContent = "Solved in " + movesMade(game.state) +
+      " " + plural(movesMade(game.state), "move") + ". Come back tomorrow!";
+  } else {
+    var moves = movesMade(game.state);
+    el["board-hint"].textContent = moves === 0
+      ? "Change exactly one letter per move."
+      : moves + " " + plural(moves, "move") + " so far.";
+  }
+}
+
+function plural(n, word) { return n === 1 ? word : word + "s"; }
+
+/* -----------------------------------------------------------------------------
+ * 8. Input
+ * -------------------------------------------------------------------------- */
+
+function handleKey(key) {
+  if (isModalOpen() || game.state.completed) return;
+
+  if (key === "ENTER") return commitGuess();
+
+  if (key === "BACKSPACE") {
+    if (!game.state.current) return;
+    game.state.current = game.state.current.slice(0, -1);
+    renderActiveRow();
+    return;
+  }
+
+  if (/^[A-Z]$/.test(key) && game.state.current.length < 4) {
+    game.state.current += key;
+    renderActiveRow(game.state.current.length - 1);
+  }
+}
+
+function commitGuess() {
+  var attempt = game.state.current;
+  var result = submitGuess(attempt);
+
+  if (!result.ok) {
+    // The toast is role="alert", so screen readers get it without a second
+    // announcement into the polite live region.
+    showToast(result.reason);
+    shakeActiveRow();
+    return;
+  }
+
+  game.stats = markPlayed(game.stats, game.state.puzzleNumber);
+  saveState(game.state);
+  renderBoard({ commitLast: true });
+  renderHint();
+  announce(describeRow(result.word, movesMade(game.state), result.changed));
+
+  if (result.won) handleWin();
+}
+
+function handleWin() {
+  var state = game.state;
+  var optimal = ensureOptimal();
+  var moves = movesMade(state);
+
+  // Practice replays (state.scored already true) never touch the stats.
+  if (!state.scored) {
+    state.scored = true;
+    game.stats = updateStats(game.stats, state.puzzleNumber, moves, optimal);
+  }
+  saveState(state);
+
+  announce("You reached " + CONFIG.targetWord + " in " + moves + " moves.");
+  setTimeout(function () { showResults(); }, 700);
+}
+
+/* -----------------------------------------------------------------------------
+ * 9. Modals, results and sharing
+ * -------------------------------------------------------------------------- */
+
+var openModalId = null;
+var lastFocused = null;
+
+function isModalOpen() { return openModalId !== null; }
+
+function openModal(id) {
+  var modal = el[id];
+  if (!modal) return;
+  lastFocused = document.activeElement;
+
+  ["modal-help", "modal-results", "modal-stats", "modal-yesterday"].forEach(function (key) {
+    if (el[key]) el[key].hidden = true;
+  });
+  modal.hidden = false;
+  el.overlay.hidden = false;
+  openModalId = id;
+
+  // Land focus on the friendliest control, not the close button.
+  var target = modal.querySelector(".btn--primary") ||
+               modal.querySelector(".btn") ||
+               modal.querySelector(".modal__close");
+  if (target) target.focus();
+}
+
+function closeModal() {
+  if (!isModalOpen()) return;
+  el.overlay.hidden = true;
+  if (el[openModalId]) el[openModalId].hidden = true;
+  openModalId = null;
+  if (lastFocused && lastFocused.focus) lastFocused.focus();
+}
+
+/** Keep Tab inside the open dialog. */
+function trapFocus(event) {
+  if (event.key !== "Tab" || !isModalOpen()) return;
+  var modal = el[openModalId];
+  var focusable = modal.querySelectorAll(
+    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+  );
+  if (!focusable.length) return;
+  var first = focusable[0];
+  var last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+function renderLadder(container, words) {
+  container.textContent = "";
+  words.forEach(function (word, i) {
+    if (i > 0) {
+      var arrow = document.createElement("span");
+      arrow.className = "ladder__arrow";
+      arrow.textContent = "→";
+      container.appendChild(arrow);
+    }
+    var chip = document.createElement("span");
+    chip.className = "ladder__word" + (word === CONFIG.targetWord ? " ladder__word--target" : "");
+    chip.textContent = word;
+    container.appendChild(chip);
+  });
+}
+
+function scoreCell(value, label, good) {
+  var cell = document.createElement("div");
+  cell.className = "score__cell" + (good ? " score__cell--good" : "");
+  var v = document.createElement("div");
+  v.className = "score__value";
+  v.textContent = value;
+  var l = document.createElement("div");
+  l.className = "score__label";
+  l.textContent = label;
+  cell.appendChild(v);
+  cell.appendChild(l);
+  return cell;
+}
+
+function showResults() {
+  var state = game.state;
+  var moves = movesMade(state);
+  var optimal = ensureOptimal();
+  var over = (typeof optimal === "number") ? moves - optimal : null;
+
+  el["results-title"].textContent = "You got to " + CONFIG.targetWord + "!";
+  el["results-subtitle"].textContent =
+    CONFIG.gameName + " #" + state.puzzleNumber + " · started from " + state.startWord;
+
+  var score = el["results-score"];
+  score.textContent = "";
+  score.appendChild(scoreCell(moves, "Your moves"));
+  if (typeof optimal === "number") {
+    score.appendChild(scoreCell(optimal, "Optimal"));
+    score.appendChild(scoreCell(
+      over === 0 ? "Perfect!" : "+" + over,
+      over === 0 ? "Shortest path" : "Over optimal",
+      over === 0
+    ));
+  }
+
+  renderLadder(el["results-ladder"], state.ladder);
+  openModal("modal-results");
+}
+
+/**
+ * Emoji grid: one line per word, a brown square where the letter changed.
+ * It shows the *shape* of the solution without giving the words away.
+ */
+function buildEmojiGrid(ladder) {
+  var lines = ["⬛⬛⬛⬛"];               // the starting word
+  for (var i = 1; i < ladder.length; i++) {
+    var idx = changedIndex(ladder[i - 1], ladder[i]);
+    // 🟫 matches the brown accent the changed tile actually uses on the board.
+    var mark = ladder[i] === CONFIG.targetWord ? "🐟" : "🟫";
+    var row = "";
+    for (var j = 0; j < 4; j++) row += (j === idx ? mark : "⬛");
+    lines.push(row);
+  }
+  return lines.join("\n");
+}
+
+function buildShareText(includeLadder) {
+  var state = game.state;
+  var moves = movesMade(state);
+  var optimal = ensureOptimal();
+  var header = CONFIG.gameName + " #" + state.puzzleNumber;
+  var summary = moves + " " + plural(moves, "move") + " 🐟";
+  if (typeof optimal === "number") {
+    summary += moves === optimal ? " · perfect path!" : " · optimal " + optimal;
+  }
+  var parts = [header, summary, buildEmojiGrid(state.ladder)];
+  if (includeLadder) parts.push(state.ladder.join(" → "));
+  return parts.join("\n");
+}
+
+function shareResult() {
+  var text = buildShareText(el["share-include-ladder"].checked);
+
+  if (typeof navigator !== "undefined" && navigator.share) {
+    navigator.share({ text: text }).catch(function () { /* user dismissed */ });
+    return;
+  }
+  copyText(text).then(function (ok) {
+    showToast(ok ? "Copied to clipboard" : "Copy failed — select and copy manually");
+  });
+}
+
+function copyText(text) {
+  if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).then(function () { return true; },
+                                                   function () { return legacyCopy(text); });
+  }
+  return Promise.resolve(legacyCopy(text));
+}
+
+function legacyCopy(text) {
+  try {
+    var area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    var ok = document.execCommand("copy");
+    document.body.removeChild(area);
+    return ok;
+  } catch (err) {
+    return false;
+  }
+}
+
+/** Wipe today's ladder for another go. Stats stay put (state.scored is kept). */
+function replayPuzzle() {
+  game.state.ladder = [game.puzzle.startWord];
+  game.state.completed = false;
+  game.state.current = "";
+  saveState(game.state);
+  closeModal();
+  renderBoard();
+  renderHint();
+  announce("Board reset. Starting word " + game.puzzle.startWord + ".");
+}
+
+/* ------------------------------------ stats modal ------------------------- */
+
+function statTile(value, label) {
+  var box = document.createElement("div");
+  box.className = "stat";
+  var v = document.createElement("div");
+  v.className = "stat__value" + (/[A-Za-z]/.test(String(value)) ? " stat__value--word" : "");
+  v.textContent = value;
+  var l = document.createElement("div");
+  l.className = "stat__label";
+  l.textContent = label;
+  box.appendChild(v);
+  box.appendChild(l);
+  return box;
+}
+
+function showStats() {
+  var s = game.stats;
+  var grid = el["stats-grid"];
+  grid.textContent = "";
+
+  var avgMoves = s.completed ? (s.totalMoves / s.completed).toFixed(1) : "—";
+  var avgOver = s.completed ? (s.totalOverOptimal / s.completed).toFixed(1) : "—";
+  var best = s.bestOverOptimal === null
+    ? "—"
+    : (s.bestOverOptimal === 0 ? "Perfect" : "+" + s.bestOverOptimal);
+
+  [
+    [s.played, "Played"],
+    [s.completed, "Solved"],
+    [s.currentStreak, "Current streak"],
+    [s.maxStreak, "Max streak"],
+    [avgMoves, "Avg moves"],
+    [avgOver, "Avg over optimal"],
+    [s.perfect, "Perfect paths"],
+    [best, "Best result"]
+  ].forEach(function (pair) { grid.appendChild(statTile(pair[0], pair[1])); });
+
+  renderDistribution(el["stats-dist"], s);
+  openModal("modal-stats");
+}
+
+function renderDistribution(container, stats) {
+  container.textContent = "";
+  var keys = Object.keys(stats.distribution).map(Number).sort(function (a, b) { return a - b; });
+
+  if (!keys.length) {
+    var empty = document.createElement("p");
+    empty.className = "dist__empty";
+    empty.textContent = "Solve a puzzle to start your distribution.";
+    container.appendChild(empty);
+    return;
+  }
+
+  var max = Math.max.apply(null, keys.map(function (k) { return stats.distribution[k]; }));
+  var todayMoves = game.state && game.state.completed ? movesMade(game.state) : null;
+
+  keys.forEach(function (moves) {
+    var count = stats.distribution[moves];
+    var row = document.createElement("div");
+    row.className = "dist__row";
+
+    var key = document.createElement("span");
+    key.className = "dist__key";
+    key.textContent = moves;
+
+    var bar = document.createElement("span");
+    bar.className = "dist__bar" + (moves === todayMoves ? " dist__bar--current" : "");
+    bar.style.width = Math.max(8, Math.round((count / max) * 100)) + "%";
+    bar.textContent = count;
+
+    row.appendChild(key);
+    row.appendChild(bar);
+    row.setAttribute("aria-label", count + " " + plural(count, "puzzle") + " solved in " + moves + " moves");
+    container.appendChild(row);
+  });
+}
+
+/* --------------------------------- yesterday ------------------------------ */
+
+function showYesterday() {
+  var body = el["yesterday-body"];
+  body.textContent = "";
+  var number = game.puzzle.number - 1;
+
+  if (number < 1) {
+    var none = document.createElement("p");
+    none.textContent = "There is no earlier puzzle — today is #1!";
+    body.appendChild(none);
+    openModal("modal-yesterday");
+    return;
+  }
+
+  var start = CONFIG.forceStartWord ? game.puzzle.startWord : startWordFor(number);
+  var path = calculateShortestPath(start, CONFIG.targetWord);
+
+  [["Puzzle", "#" + number], ["Starting word", start],
+   ["Optimal", path ? (path.length - 1) + " " + plural(path.length - 1, "move") : "—"]]
+    .forEach(function (pair) {
+      var row = document.createElement("div");
+      row.className = "kv";
+      var k = document.createElement("span");
+      k.className = "kv__k";
+      k.textContent = pair[0];
+      var v = document.createElement("span");
+      v.className = "kv__v";
+      v.textContent = pair[1];
+      row.appendChild(k);
+      row.appendChild(v);
+      body.appendChild(row);
+    });
+
+  if (path) {
+    var label = document.createElement("p");
+    label.className = "modal__label";
+    label.textContent = "One shortest path";
+    body.appendChild(label);
+    var ladder = document.createElement("div");
+    ladder.className = "ladder";
+    body.appendChild(ladder);
+    renderLadder(ladder, path);
+    var note = document.createElement("p");
+    note.className = "modal__note";
+    note.textContent = "Other paths of the same length may exist.";
+    body.appendChild(note);
+  }
+
+  openModal("modal-yesterday");
+}
+
+/* -----------------------------------------------------------------------------
+ * 10. Debug helpers and bootstrap
+ * -------------------------------------------------------------------------- */
+
+/** Read ?debug=1&puzzle=362&date=2026-01-01&start=SWIM overrides. */
+function applyUrlOverrides() {
+  if (typeof location === "undefined" || !location.search) return;
+  var params = new URLSearchParams(location.search);
+  if (params.get("debug") === "1") CONFIG.debug = true;
+
+  var puzzle = parseInt(params.get("puzzle"), 10);
+  if (!isNaN(puzzle) && puzzle > 0) CONFIG.forcePuzzleNumber = puzzle;
+
+  var date = params.get("date");
+  if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) CONFIG.forceDate = date;
+
+  var start = params.get("start");
+  if (start && isValidWord(start)) {
+    CONFIG.forceStartWord = start.toUpperCase();
+  } else if (start) {
+    console.warn("[" + CONFIG.gameName + "] ignoring unknown start word:", start);
+  }
+}
+
+function renderDebugBar() {
+  if (!CONFIG.debug) return;
+  var bar = document.createElement("div");
+  bar.className = "debug-bar";
+  bar.textContent = "DEBUG · optimal " + ensureOptimal() + " moves · ";
+  var reset = document.createElement("button");
+  reset.type = "button";
+  reset.className = "footer__btn";
+  reset.textContent = "Reset puzzle";
+  reset.addEventListener("click", replayPuzzle);
+  bar.appendChild(reset);
+  document.querySelector(".main").appendChild(bar);
+  console.log("[" + CONFIG.gameName + "] optimal path:", game.optimalPath.join(" → "));
+}
+
+/** Console API: window.LADDER (named for the game, not the target word). */
+function debugApi() {
+  return {
+    config: CONFIG,
+    game: game,
+    /** Log (and return) the optimal path for the current or a given word. */
+    solve: function (start) {
+      var path = calculateShortestPath(start || game.puzzle.startWord, CONFIG.targetWord);
+      console.log(path ? path.join(" → ") : "no path found");
+      return path;
+    },
+    optimal: function (start) { return optimalMoves(start || game.puzzle.startWord); },
+    /** Preview the share text without touching the clipboard. */
+    shareText: function (includeLadder) { return buildShareText(!!includeLadder); },
+    /** Wipe today's ladder (keeps stats). */
+    reset: replayPuzzle,
+    /** Wipe absolutely everything, including stats and the tutorial flag. */
+    hardReset: function () {
+      var store = storage();
+      if (store) Object.keys(STORAGE_KEYS).forEach(function (k) { store.removeItem(STORAGE_KEYS[k]); });
+      location.reload();
+    },
+    /** Jump to another puzzle number or date (reloads with query params). */
+    setPuzzle: function (n) { location.search = "?puzzle=" + n; },
+    setDate: function (iso) { location.search = "?date=" + iso; },
+    stats: function () { return game.stats; },
+    dictionarySize: DICTIONARY.size
+  };
+}
+
+function bindEvents() {
+  // On-screen keyboard (delegated: one listener for all 28 keys)
+  el.keyboard.addEventListener("click", function (event) {
+    var button = event.target.closest("[data-key]");
+    if (button) handleKey(button.dataset.key);
+  });
+
+  // Physical keyboard
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && isModalOpen()) { closeModal(); return; }
+    if (event.key === "Tab") { trapFocus(event); return; }
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+    if (event.key === "Enter") {
+      // Let Enter activate whatever button has focus instead of submitting.
+      if (document.activeElement && document.activeElement.tagName === "BUTTON") return;
+      event.preventDefault();
+      handleKey("ENTER");
+    } else if (event.key === "Backspace") {
+      event.preventDefault();
+      handleKey("BACKSPACE");
+    } else if (/^[a-zA-Z]$/.test(event.key)) {
+      handleKey(event.key.toUpperCase());
+    }
+  });
+
+  // Modal open/close
+  el["btn-help"].addEventListener("click", function () { openModal("modal-help"); });
+  el["btn-stats"].addEventListener("click", showStats);
+  el["btn-yesterday"].addEventListener("click", showYesterday);
+  el["btn-share"].addEventListener("click", shareResult);
+  el["btn-replay"].addEventListener("click", replayPuzzle);
+
+  el.overlay.addEventListener("click", function (event) {
+    if (event.target === el.overlay || event.target.hasAttribute("data-close")) {
+      if (openModalId === "modal-help") writeJSON(STORAGE_KEYS.tutorial, { seen: true });
+      closeModal();
+    }
+  });
+
+  // Tapping the board reopens the results panel once the puzzle is solved.
+  el.board.addEventListener("click", function () {
+    if (game.state.completed && !isModalOpen()) showResults();
+  });
+}
+
+function init() {
+  applyUrlOverrides();
+  cacheDom();
+
+  game.puzzle = getDailyPuzzle();
+  game.state = loadState(game.puzzle);
+  game.stats = loadStats();
+
+  renderHeader();
+  renderKeyboard();
+  renderBoard();
+  renderHint();
+  bindEvents();
+
+  if (CONFIG.debug) renderDebugBar();
+
+  // First visit → tutorial. The acknowledgement is remembered forever.
+  var tutorial = readJSON(STORAGE_KEYS.tutorial, null);
+  if (!tutorial || !tutorial.seen) {
+    openModal("modal-help");
+    writeJSON(STORAGE_KEYS.tutorial, { seen: true });
+  } else if (game.state.completed) {
+    // Returning to a finished puzzle: show the result straight away.
+    setTimeout(showResults, 250);
+  }
+
+  if (typeof window !== "undefined") window.LADDER = debugApi();
+}
+
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+}
+
+/* Exported for the Node test harness (test.js); harmless in the browser. */
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    CONFIG: CONFIG,
+    DICTIONARY: DICTIONARY,
+    START_LIST: START_LIST,
+    isValidWord: isValidWord,
+    isValidTransition: isValidTransition,
+    changedIndex: changedIndex,
+    diffCount: diffCount,
+    neighbours: neighbours,
+    calculateShortestPath: calculateShortestPath,
+    optimalMoves: optimalMoves,
+    getDailyPuzzle: getDailyPuzzle,
+    startWordFor: startWordFor,
+    daysSinceEpoch: daysSinceEpoch,
+    loadState: loadState,
+    saveState: saveState,
+    loadStats: loadStats,
+    saveStats: saveStats,
+    updateStats: updateStats,
+    markPlayed: markPlayed,
+    defaultStats: defaultStats,
+    submitGuess: submitGuess,
+    game: game,
+    STORAGE_KEYS: STORAGE_KEYS,
+    MESSAGES: MESSAGES
+  };
+}
+
+</script>
+</body>
+</html>
