@@ -5,21 +5,26 @@
    ========================================================================== */
 
 :root {
-  --bg:            #191919;
-  --panel:         #222222;
-  --panel-raised:  #2b2b2b;
-  --border:        #666666;
-  --border-soft:   #3a3a3a;
-  --text:          #f3f3f3;
-  --text-dim:      #8a8a8a;
-  --accent:        #8a420d;   /* brown/orange fill */
-  --accent-bright: #d98032;   /* readable accent for text on dark */
-  --key:           #4a4a4a;
-  --key-active:    #5e5e5e;
-  --danger:        #b3453a;
+  /* Nautical palette: deep-water grounds, a weathered-rope neutral, and a
+     buoy-teal accent. The neutrals are biased blue-green so they read as part
+     of the same sea rather than as generic grey. */
+  --bg:            #0c1a21;   /* deep water */
+  --panel:         #10242d;   /* hull */
+  --panel-raised:  #16323e;
+  --border:        #4d7484;   /* weathered rope */
+  --border-soft:   #22414f;
+  --text:          #eaf3f5;   /* sea foam */
+  --text-dim:      #7b9aa6;
+  --accent:        #0d6d7c;   /* buoy teal fill */
+  --accent-bright: #45c6c9;   /* readable teal for text on dark */
+  --changed-bar:   #5b8394;   /* the "you changed this letter" underline */
+  --key:           #27454f;
+  --key-active:    #345a67;
+  --danger:        #c25b4e;
 
   --tile-size: clamp(52px, 17vw, 72px);
   --tile-gap: clamp(6px, 1.8vw, 10px);
+  --key-gap: 5px;
   --radius: 6px;
   --maxw: 640px;
 
@@ -194,21 +199,29 @@ button { font: inherit; color: inherit; }
 /* A word already committed to the ladder */
 .row--done .tile { border-color: var(--border); }
 
-/* The tile whose letter changed from the previous word */
-.tile--changed {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 35%, transparent);
-  color: #ffe9d6;
-}
-
 /* The starting word sits a little quieter than the player's own moves */
 .row--start .tile { border-color: var(--border-soft); color: var(--text-dim); }
 
-/* The winning target row */
-.row--target .tile {
-  border-color: var(--accent);
+/* A letter that already matches the goal word in that position — the main
+   signal on the board: "this one is locked in". */
+.tile--correct {
+  border-color: var(--accent-bright);
   background: var(--accent);
-  color: #fff6ee;
+  color: #f1fbfb;
+}
+.row--start .tile--correct { color: #f1fbfb; }
+
+/* The letter you changed on this move. Deliberately quieter than --correct:
+   a neutral bar along the bottom edge, so "what I changed" never gets
+   mistaken for "what is right". The two can land on the same tile. */
+.tile--changed { box-shadow: inset 0 -5px 0 var(--changed-bar); }
+.tile--correct.tile--changed { box-shadow: inset 0 -5px 0 rgba(255, 255, 255, 0.4); }
+
+/* The winning row: every letter is correct by definition, so it goes solid. */
+.row--target .tile {
+  border-color: var(--accent-bright);
+  background: var(--accent);
+  color: #f1fbfb;
 }
 
 /* Active (editable) row */
@@ -297,15 +310,24 @@ button { font: inherit; color: inherit; }
   touch-action: manipulation;
 }
 
+/* Every letter key is exactly --key-w wide on all three rows, and each row is
+   centred. Previously the keys were `flex: 1 1 auto`, so each row stretched to
+   the full width and the 10-key row came out narrower than the 9-key row.
+   Widths are derived from a 10-key row: 10w + 9 gaps = 100%.
+   Enter and Backspace take one and a half keys, so row 3 also totals 100%:
+   2(1.5w + 0.5g) + 7w + 8g = 10w + 9g. */
+.keyboard { --key-w: calc((100% - 9 * var(--key-gap)) / 10); }
+
 .kb-row {
   display: flex;
   justify-content: center;
-  gap: 5px;
+  gap: var(--key-gap);
   width: 100%;
 }
 
 .key {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
+  width: var(--key-w);
   min-width: 0;
   height: clamp(46px, 12vw, 58px);
   border: 0;
@@ -326,8 +348,11 @@ button { font: inherit; color: inherit; }
 @media (hover: hover) {
   .key:hover { background: var(--key-active); }
 }
-.key--wide { flex: 1.6 1 auto; font-size: clamp(11px, 3.2vw, 13px); letter-spacing: 0.04em; }
-.kb-row--spacer { padding: 0 5%; }   /* indents the middle A–L row */
+.key--wide {
+  width: calc(var(--key-w) * 1.5 + var(--key-gap) * 0.5);
+  font-size: clamp(11px, 3.2vw, 13px);
+  letter-spacing: 0.04em;
+}
 
 /* ---------------------------------- footer ------------------------------- */
 

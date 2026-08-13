@@ -404,12 +404,24 @@ function cacheDom() {
   });
 }
 
+/** True where `word` already has the goal word's letter in that position. */
+function correctMask(word) {
+  var target = CONFIG.targetWord;
+  var mask = [];
+  for (var i = 0; i < 4; i++) mask.push(!!word[i] && word[i] === target[i]);
+  return mask;
+}
+
 /** Build one row of four tiles. */
 function makeRow(word, opts) {
   opts = opts || {};
   var row = document.createElement("div");
   row.className = "row";
   if (opts.className) row.className += " " + opts.className;
+
+  // Committed rows show which letters are already in place for the goal; the
+  // row being typed stays plain so "typing" reads differently from "played".
+  var correct = opts.showCorrect ? correctMask(word) : [];
 
   for (var i = 0; i < 4; i++) {
     var tile = document.createElement("div");
@@ -420,6 +432,7 @@ function makeRow(word, opts) {
       if (letter) tile.className += " tile--filled";
       else if (i === word.length) tile.className += " tile--cursor";
     }
+    if (correct[i]) tile.className += " tile--correct";
     if (opts.changed === i) tile.className += " tile--changed";
     if (opts.popIndex === i) tile.className += " tile--pop";
     row.appendChild(tile);
@@ -427,12 +440,20 @@ function makeRow(word, opts) {
   return row;
 }
 
-/** Accessible description of a committed row. */
+/**
+ * Accessible description of a committed row. Screen-reader users get the same
+ * two facts the tiles show visually: what changed, and what is already right.
+ */
 function describeRow(word, index, changed) {
   var spelled = word.split("").join(" ");
-  if (index === 0) return "Starting word: " + spelled;
+  var inPlace = correctMask(word).reduce(function (n, ok) { return n + (ok ? 1 : 0); }, 0);
+  var progress = inPlace
+    ? ", " + inPlace + " of 4 letters in place for " + CONFIG.targetWord
+    : "";
+
+  if (index === 0) return "Starting word: " + spelled + progress;
   var suffix = changed >= 0 ? ", letter " + (changed + 1) + " changed" : "";
-  return "Move " + index + ": " + spelled + suffix;
+  return "Move " + index + ": " + spelled + suffix + progress;
 }
 
 function renderBoard(options) {
@@ -449,7 +470,9 @@ function renderBoard(options) {
     // Only the freshly committed row animates, so re-renders stay quiet.
     if (options.commitLast && i === state.ladder.length - 1) classes.push("row--commit");
 
-    var row = makeRow(word, { className: classes.join(" "), changed: changed });
+    var row = makeRow(word, {
+      className: classes.join(" "), changed: changed, showCorrect: true
+    });
     row.setAttribute("role", "group");
     row.setAttribute("aria-label", describeRow(word, i, changed));
     el.board.appendChild(row);
@@ -739,8 +762,9 @@ function buildEmojiGrid(ladder) {
   var lines = ["⬛⬛⬛⬛"];               // the starting word
   for (var i = 1; i < ladder.length; i++) {
     var idx = changedIndex(ladder[i - 1], ladder[i]);
-    // 🟫 matches the brown accent the changed tile actually uses on the board.
-    var mark = ladder[i] === CONFIG.targetWord ? "🐟" : "🟫";
+    // 🟦 matches the teal the board uses; the grid marks which letter you
+    // changed each move, not which were correct — that would leak the ladder.
+    var mark = ladder[i] === CONFIG.targetWord ? "🐟" : "🟦";
     var row = "";
     for (var j = 0; j < 4; j++) row += (j === idx ? mark : "⬛");
     lines.push(row);

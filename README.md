@@ -138,7 +138,7 @@ Everything below is a one- or two-line edit.
 | **Game name** | `CONFIG.gameName` in `script.js` (header, share text and `<title>` all follow it). |
 | **Target word** | Three steps: `python3 tools/build-words.py <word>` to re-verify every start word against the new target, `CONFIG.targetWord` in `script.js`, and the hard-coded copy (the how-to-play line in `index.html`, the win emoji in `buildEmojiGrid()`). Bump `STORAGE_KEYS` too, so old ladders and stats don't leak into the new game. |
 | **Puzzle #1's date** | `CONFIG.epoch` in `script.js`. It is app-side only; the builder does not care. |
-| **Colours** | The `:root` block at the top of `styles.css`: `--bg`, `--panel`, `--border`, `--text`, `--text-dim`, `--accent`, `--accent-bright`, `--key`. |
+| **Colours** | The `:root` block at the top of `styles.css`: `--bg`, `--panel`, `--border`, `--text`, `--text-dim`, `--accent`, `--accent-bright`, `--changed-bar`, `--key`. The palette is nautical — deep-water grounds, weathered-rope neutrals, buoy-teal accent. |
 | **Tile / key size** | `--tile-size`, `--tile-gap`, `--maxw` in the same block. |
 | **Error copy** | The `MESSAGES` object in `script.js`. |
 | **Starting words** | `START_WORD_CHUNKS` in `words.js`, or better, the selection filters (`STOP`, `NAMES`, `BAD_TONE`, the frequency threshold) in `tools/build-words.py`. |
