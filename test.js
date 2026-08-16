@@ -181,8 +181,23 @@ check("start words do not repeat within one full cycle", (() => {
 check("start word is never the target",
   START_WORDS.every((w) => w.toUpperCase() !== G.CONFIG.targetWord));
 
+check("a word override replaces the rotation for that puzzle only", (() => {
+  const overridden = Object.keys(G.CONFIG.wordOverrides).map(Number);
+  if (!overridden.length) return true;              // none configured: nothing to check
+  const n = overridden[0];
+  const free = n + 1000;                            // a number with no override
+  return G.startWordForPuzzle(n) === G.CONFIG.wordOverrides[n].toUpperCase() &&
+         G.startWordForPuzzle(free) === G.startWordFor(free);
+})());
+check("every overridden word is playable and can reach the target",
+  Object.values(G.CONFIG.wordOverrides).every((w) =>
+    G.isValidWord(w) && G.calculateShortestPath(w.toUpperCase(), G.CONFIG.targetWord) !== null),
+  Object.values(G.CONFIG.wordOverrides).join(", "));
+check("an overridden word is never the target itself",
+  Object.values(G.CONFIG.wordOverrides).every((w) => w.toUpperCase() !== G.CONFIG.targetWord));
+
 check("puzzleOffset advances the series without breaking determinism", (() => {
-  const day = new Date(2026, 0, 10);
+  const day = new Date(2026, 0, 10);   // far from any overridden puzzle number
   G.CONFIG.puzzleOffset = 0;
   const base = G.getDailyPuzzle(day);
   G.CONFIG.puzzleOffset = 1;

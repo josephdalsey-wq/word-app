@@ -35,6 +35,20 @@ const CONFIG = {
   // number is dropped and every player starts the new word together.
   puzzleOffset: 1,
 
+  // Hand-picked words for specific puzzle numbers, overriding the rotation.
+  // Use this to set a particular day's word — to hit a target difficulty, say —
+  // without skipping puzzle numbers the way puzzleOffset does. Editing an entry
+  // retires any progress already saved under that number: loadState() drops a
+  // saved ladder whose first word no longer matches the puzzle's start word.
+  //
+  // Puzzle numbers turn over at each player's local midnight, so a word set for
+  // "today" is listed under both the current number and the one before it, and
+  // players on either side of midnight get the same puzzle.
+  wordOverrides: {
+    367: "GOLF",   // par 7, only 5 par routes
+    368: "GOLF"
+  },
+
   debug: false,                // true → log the optimal path, show the debug bar
   forcePuzzleNumber: null,     // e.g. 362 to pin a specific puzzle
   forceStartWord: null,        // e.g. "SWIM" to pin a specific start word
@@ -198,6 +212,16 @@ function startWordFor(puzzleNumber) {
   return START_LIST[index];
 }
 
+/**
+ * The start word for a puzzle number: a hand-picked override when one is set,
+ * otherwise the rotation. Everything that needs a puzzle's word goes through
+ * here, so the Yesterday panel agrees with what was actually played.
+ */
+function startWordForPuzzle(number) {
+  var override = CONFIG.wordOverrides && CONFIG.wordOverrides[number];
+  return (override || startWordFor(number)).toUpperCase();
+}
+
 /** Today's (or a forced/mocked) puzzle: number, start word, target. */
 function getDailyPuzzle(date) {
   var when = date || (CONFIG.forceDate ? parseLocalDate(CONFIG.forceDate) : new Date());
@@ -206,7 +230,7 @@ function getDailyPuzzle(date) {
     : Math.max(1, daysSinceEpoch(when) + 1 + CONFIG.puzzleOffset);
   var start = CONFIG.forceStartWord
     ? CONFIG.forceStartWord.toUpperCase()
-    : startWordFor(number);
+    : startWordForPuzzle(number);
   return { number: number, startWord: start, target: CONFIG.targetWord };
 }
 
@@ -970,7 +994,7 @@ function showYesterday() {
     return;
   }
 
-  var start = CONFIG.forceStartWord ? game.puzzle.startWord : startWordFor(number);
+  var start = CONFIG.forceStartWord ? game.puzzle.startWord : startWordForPuzzle(number);
   var path = calculateShortestPath(start, CONFIG.targetWord);
 
   [["Puzzle", "#" + number], ["Starting word", start],
@@ -1185,6 +1209,7 @@ if (typeof module !== "undefined" && module.exports) {
     optimalMoves: optimalMoves,
     getDailyPuzzle: getDailyPuzzle,
     startWordFor: startWordFor,
+    startWordForPuzzle: startWordForPuzzle,
     daysSinceEpoch: daysSinceEpoch,
     loadState: loadState,
     saveState: saveState,
